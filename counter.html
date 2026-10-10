@@ -1,0 +1,1705 @@
+<title>CreVa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: glass rail left, content column right; maroon ground with rose glow; liquid-glass cards, pill controls, icon tiles. Dark first, rose-tinted light variant. */
+:root{
+  --bg:#0A0912; --fx1:rgba(146,96,255,.30); --fx2:rgba(86,48,180,.22);
+  --glass:rgba(255,255,255,.045); --surface:rgba(255,255,255,.05); --surface2:rgba(160,120,255,.14); --line:rgba(190,170,255,.14);
+  --fg:#F4F1FB; --muted:#A8A2BD; --accent:#B58CFF; --grad:linear-gradient(135deg,#D2AEFF,#9C6CF4); --accent-soft:rgba(160,120,255,.17);
+  --high:#FF7A80; --high-soft:rgba(255,90,100,.16); --amber:#FFB75E; --amber-soft:rgba(255,183,94,.14); --ok:#62D69C; --ok-soft:rgba(98,214,156,.14);
+  --rights:#E5D6FF; --side:linear-gradient(180deg,rgba(26,19,48,.72),rgba(10,9,18,.96)); --shadow:0 10px 34px rgba(0,0,0,.45); --hi:rgba(255,255,255,.06);
+  --on-grad:#1A0F33; --glow:rgba(150,104,246,.34); --navact:rgba(150,110,255,.2); --navact-ink:#fff;
+  --d1:#B58CFF; --d2:#D2B8FF; --d3:#EEE3FF; --d4:#7A52C9; --d5:#4A3382; --l1:#D2AEFF; --l2:#8F5CF0; --avbg:linear-gradient(135deg,#E3D0FF,#B58CFF);
+  --sans:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#FFFBEE; --fx1:rgba(250,205,70,.32); --fx2:rgba(255,238,170,.5);
+  --glass:rgba(255,255,255,.78); --surface:rgba(255,255,255,.8); --surface2:rgba(246,196,50,.16); --line:rgba(150,110,10,.15);
+  --fg:#141A33; --muted:#6B7088; --accent:#A97300; --grad:linear-gradient(135deg,#FCDD70,#F0BA22); --on-grad:#1A1530; --accent-soft:rgba(244,190,40,.2); --glow:rgba(240,186,34,.38);
+  --high:#C42C3C; --high-soft:rgba(196,44,60,.1); --amber:#9A6100; --amber-soft:rgba(246,196,50,.22); --ok:#1D7A4D; --ok-soft:rgba(29,122,77,.12);
+  --rights:#1C2244; --side:linear-gradient(180deg,rgba(255,252,238,.94),rgba(255,247,215,.9)); --shadow:0 8px 28px rgba(150,110,10,.10); --hi:rgba(255,255,255,.95);
+  --navact:#FFEEA6; --navact-ink:#141A33; --d1:#F0BA22; --d2:#F6D36A; --d3:#FBE9AE; --d4:#8A6A12; --d5:#3B3A55; --l1:#FCDD70; --l2:#E8A91A; --avbg:linear-gradient(135deg,#FCE08A,#F2BE2B); color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#FFFBEE; --fx1:rgba(250,205,70,.32); --fx2:rgba(255,238,170,.5);
+  --glass:rgba(255,255,255,.78); --surface:rgba(255,255,255,.8); --surface2:rgba(246,196,50,.16); --line:rgba(150,110,10,.15);
+  --fg:#141A33; --muted:#6B7088; --accent:#A97300; --grad:linear-gradient(135deg,#FCDD70,#F0BA22); --on-grad:#1A1530; --accent-soft:rgba(244,190,40,.2); --glow:rgba(240,186,34,.38);
+  --high:#C42C3C; --high-soft:rgba(196,44,60,.1); --amber:#9A6100; --amber-soft:rgba(246,196,50,.22); --ok:#1D7A4D; --ok-soft:rgba(29,122,77,.12);
+  --rights:#1C2244; --side:linear-gradient(180deg,rgba(255,252,238,.94),rgba(255,247,215,.9)); --shadow:0 8px 28px rgba(150,110,10,.10); --hi:rgba(255,255,255,.95);
+  --navact:#FFEEA6; --navact-ink:#141A33; --d1:#F0BA22; --d2:#F6D36A; --d3:#FBE9AE; --d4:#8A6A12; --d5:#3B3A55; --l1:#FCDD70; --l2:#E8A91A; --avbg:linear-gradient(135deg,#FCE08A,#F2BE2B); color-scheme:light}
+*{box-sizing:border-box}
+body{background-color:var(--bg);background-image:radial-gradient(1100px 520px at 72% -8%,var(--fx1),transparent 62%),radial-gradient(900px 600px at -5% 105%,var(--fx2),transparent 60%);background-attachment:fixed;color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+.ic{flex:none;display:block}
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;align-self:start;height:100vh;border-right:1px solid var(--line);background:var(--side);backdrop-filter:blur(22px);display:flex;flex-direction:column;padding:22px 14px;gap:6px;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px}
+.brand b{display:block;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.brand span{display:block;font:500 10px var(--mono);color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-top:5px}
+.nav{display:flex;align-items:center;gap:13px;width:100%;padding:12px 14px;border:0;background:none;border-radius:14px;text-align:left;cursor:pointer;color:var(--muted);font-weight:500;font-size:14.5px}
+.nav:hover{background:var(--surface);color:var(--fg)}
+.nav[aria-current="page"]{background:var(--navact);color:var(--navact-ink);font-weight:600;box-shadow:0 8px 22px var(--glow),inset 0 1px 0 rgba(255,255,255,.3)}
+.nav .go{margin-left:auto}
+:root:not([data-theme="light"]) .nav[aria-current="page"]{border:1px solid rgba(190,160,255,.35)}
+.side .sp{flex:1}
+.promo{display:grid;gap:6px;text-align:left;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--glass);cursor:pointer;color:var(--fg);box-shadow:inset 0 1px 0 var(--hi)}
+.promo b{display:flex;align-items:center;gap:10px;color:var(--accent);font-weight:600}
+.promo b .go{margin-left:auto}
+.promo small{color:var(--muted);font-size:12px;line-height:1.5}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px clamp(16px,4vw,40px);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;backdrop-filter:blur(14px)}
+.topbar .l{display:flex;align-items:center;gap:10px}
+.topbar .rr{display:flex;align-items:center;gap:10px}
+.btn.burger{display:none}
+.pillbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--glass);cursor:pointer;font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;box-shadow:inset 0 1px 0 var(--hi)}
+.round{position:relative;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--glass);display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 1px 0 var(--hi)}
+.round i{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:#FF4D6A}
+.who{display:flex;align-items:center;gap:10px;padding:5px 14px 5px 5px;border-radius:999px;border:1px solid var(--line);background:var(--glass);font-weight:500}
+.av{width:32px;height:32px;border-radius:50%;background:var(--avbg);overflow:hidden;flex:none}.av img{width:100%;height:100%;object-fit:cover;display:block}
+.main{padding:14px clamp(16px,4vw,40px) 72px;max-width:1240px}
+.scrim{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;bottom:0;width:270px;z-index:40;transform:translateX(-102%);transition:transform .2s;padding-top:calc(22px + env(safe-area-inset-top,0px))}
+  .side.open{transform:none}
+  .scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:35}
+  .btn.burger{display:inline-flex}
+  .who span{display:none}.who{padding:5px}
+  .pillbtn{padding:9px 12px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.eyebrow{font:500 11.5px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.ph{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:22px}
+.ph h1{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.1;text-wrap:balance;margin-top:4px}
+.ph h1 em{font-style:normal;color:var(--fg)}
+.ph p{color:var(--muted);margin-top:6px;max-width:64ch;font-size:15px}
+h2{font:500 11.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.h3{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.h3 a{font-size:13px;font-weight:500;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.sec{margin-top:26px}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:20px;backdrop-filter:blur(16px) saturate(140%);box-shadow:var(--shadow),inset 0 1px 0 var(--hi)}
+.pad{padding:20px}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:-.02em}
+.big{font-size:32px;font-weight:700;line-height:1.1}
+.mid{font-size:24px;font-weight:700;line-height:1.15}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1000px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.g3,.g2,.g4{grid-template-columns:minmax(0,1fr)}}
+.ib{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent);border:1px solid var(--line)}
+.ib.sq{border-radius:14px;width:42px;height:42px}
+.cells{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;background:none;border:0;box-shadow:none;backdrop-filter:none}
+.cells>div{padding:18px;min-width:0;display:flex;gap:14px;align-items:center;background:var(--glass);border:1px solid var(--line);border-radius:20px;backdrop-filter:blur(16px);box-shadow:var(--shadow),inset 0 1px 0 var(--hi)}
+.cells>div>div{min-width:0}
+.cells.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.cells.c4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.cells,.cells.c4{grid-template-columns:minmax(0,1fr)}}
+.lab{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.delta{font:500 12.5px var(--sans);color:var(--ok)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font:600 13px var(--sans);text-align:center;box-shadow:inset 0 1px 0 var(--hi)}
+.btn:hover{border-color:var(--accent)}
+.btn.p{background:var(--grad);border-color:transparent;color:var(--on-grad);box-shadow:0 8px 24px var(--glow),inset 0 1px 0 rgba(255,255,255,.32)}
+.btn.p:hover{filter:brightness(1.08)}
+.btn.sm{padding:8px 14px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sev{display:inline-block;padding:3px 10px;border-radius:8px;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--surface2);color:var(--muted)}
+.sev.high{background:var(--high-soft);color:var(--high)}.sev.med{background:var(--amber-soft);color:var(--amber)}.sev.low{background:var(--surface2);color:var(--muted)}.sev.ok{background:var(--ok-soft);color:var(--ok)}.sev.acc{background:var(--accent-soft);color:var(--accent)}
+.sev.solid{background:var(--grad);color:var(--on-grad)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--muted)}
+.dot.high{background:var(--high)}.dot.amber{background:var(--amber)}.dot.ok{background:var(--ok)}
+.logo{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:700;font-size:19px;color:#fff;overflow:hidden}
+.logo.lg{width:62px;height:62px;font-size:24px}
+.logo.tx{font-size:10px;letter-spacing:-.02em}
+.stat .lab{margin-bottom:2px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:var(--glass);min-width:0;max-width:100%;box-shadow:inset 0 1px 0 var(--hi)}
+.chip .ib{width:36px;height:36px}
+.chip small{display:block;font:500 11px var(--sans);color:var(--muted)}
+.chip b{font-weight:600;overflow-wrap:anywhere;font-size:13px;display:block}
+.chip.high{border-color:var(--high)}.chip.med{border-color:var(--amber)}
+.pillb{padding:9px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:13px}
+.pillb[aria-pressed="true"]{background:var(--grad);border-color:transparent;color:var(--on-grad);box-shadow:0 6px 18px var(--glow)}
+textarea,input[type=text],input[type=number],input[type=email],input[type=tel],input[type=date],input[type=url],select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);resize:vertical;line-height:1.55}
+select option{background:var(--bg);color:var(--fg)}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+label.f{display:block;font-weight:600;margin-bottom:6px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:700px){.fgrid{grid-template-columns:minmax(0,1fr)}}
+.tabs{display:flex;gap:10px;margin-bottom:20px;overflow-x:auto;padding:2px}
+.tab{padding:11px 26px;border-radius:999px;border:1px solid var(--line);background:var(--glass);cursor:pointer;font-weight:600;color:var(--fg);white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--grad);border-color:transparent;color:var(--on-grad);box-shadow:0 8px 22px var(--glow)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0 8px}
+th{text-align:left;font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:6px 16px;white-space:nowrap}
+td{padding:14px 16px;background:var(--surface);vertical-align:middle;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+td:first-child{border-left:1px solid var(--line);border-radius:16px 0 0 16px}
+td:last-child{border-right:1px solid var(--line);border-radius:0 16px 16px 0}
+td .tc{display:flex;align-items:center;gap:14px}
+.note{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:13.5px}
+.note.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.note.acc{background:var(--accent-soft);color:var(--fg);border-color:var(--line)}
+.note.acc b{color:var(--accent)}
+.status{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.status .dot{width:7px;height:7px}
+.skel{height:14px;border-radius:8px;background:linear-gradient(90deg,var(--surface),var(--surface2),var(--surface));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.issue{padding:20px;border-bottom:1px solid var(--line);display:grid;gap:10px;min-width:0}
+.issue:last-child{border-bottom:0}
+.issue .hd{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.issue h3{font-size:17px;font-weight:600}
+.quote{font:13px var(--mono);padding:10px 14px;background:var(--surface);border-radius:12px;overflow-wrap:anywhere;border:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 14px}
+.kv dt{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.kv dd{margin:0}
+@media (max-width:600px){.kv{grid-template-columns:minmax(0,1fr)}}
+.rrow{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line);cursor:pointer;min-width:0}
+.rrow:last-child{border-bottom:0}.rrow:hover{background:var(--surface)}
+.rrow .t{flex:1;min-width:0}.rrow .t b{display:block;font-weight:600}.rrow .t span{color:var(--muted);font-size:13px}
+.wf{position:relative;--lw:170px;--vw:90px;padding:6px 0}
+.wf .r{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) var(--vw);align-items:center;gap:10px;padding:5px 0}
+.wf .r .n{font-size:13px;line-height:1.3;min-width:0}
+.wf .r .v{text-align:right;font:500 13px var(--mono)}
+.wf .trk{position:relative;height:22px;background:linear-gradient(var(--line),var(--line)) 0 100%/100% 1px no-repeat}
+.wf .bar{position:absolute;top:2px;height:18px;border-radius:6px}
+.bar.content{background:var(--grad)}.bar.rights{background:var(--rights)}.bar.finance{background:var(--muted);opacity:.7}.bar.total{background:var(--fg)}.bar.range{background:transparent;border:2px solid var(--accent)}
+.wf .ref{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--high);left:calc(var(--lw) + 10px + (100% - var(--lw) - var(--vw) - 20px) * var(--p))}
+.wf .refl{position:absolute;top:-16px;font:600 10.5px var(--mono);color:var(--high);white-space:nowrap;transform:translateX(-50%);left:calc(var(--lw) + 10px + (100% - var(--lw) - var(--vw) - 20px) * var(--p))}
+@media (max-width:600px){.wf{--lw:104px;--vw:68px}.wf .r .n{font-size:12px}}
+.split{display:flex;height:14px;border-radius:999px;overflow:hidden;margin:10px 0}
+.split i{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--c)}
+.share{border:1px solid var(--line);border-radius:24px;background:var(--glass);backdrop-filter:blur(16px);padding:24px;max-width:540px;box-shadow:var(--shadow),inset 0 1px 0 var(--hi)}
+.share .rng{font-size:38px;font-weight:700;line-height:1.1}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.modes{grid-template-columns:minmax(0,1fr)}}
+.mode{text-align:left;padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--glass);cursor:pointer;display:grid;gap:4px;box-shadow:inset 0 1px 0 var(--hi)}
+.mode[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 28px var(--glow);background:var(--accent-soft)}
+.mode b{font:600 11.5px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.mode .pr{font-size:26px;font-weight:700}
+.mode span.d{color:var(--muted);font-size:13px}
+.ladder{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:none;border:0;box-shadow:none;backdrop-filter:none}
+.ladder>div{padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface);min-width:0}
+.ladder>div:last-child{background:var(--accent-soft);border-color:var(--accent)}
+@media (max-width:600px){.ladder{grid-template-columns:minmax(0,1fr)}}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:11px 18px;border-radius:999px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+details summary{cursor:pointer;color:var(--muted);font-weight:500}
+.sevbar{display:flex;gap:5px}.sevbar i{width:26px;height:6px;border-radius:999px;background:var(--surface2)}.sevbar i.on{background:var(--grad)}
+.small{font-size:12.5px}
+.stack{display:grid;gap:16px}
+.hide{display:none}
+/* home */
+.home2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;margin-top:18px;align-items:start}
+.col{display:grid;gap:18px;min-width:0}
+@media (max-width:1050px){.home2{grid-template-columns:minmax(0,1fr)}}
+.orow{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface);cursor:pointer;flex-wrap:wrap;margin-bottom:10px}
+.orow:last-child{margin-bottom:0}.orow:hover{border-color:var(--accent)}
+.orow .t{flex:1 1 200px;min-width:0}.orow .t b{display:block;font-weight:600;font-size:15px}.orow .t span{color:var(--muted);font-size:12.5px}
+.orow .r{text-align:right;min-width:120px}.orow .r b{display:block;font-size:17px;font-weight:700}
+.orow .st{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.mini{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface);min-width:0}
+.mini .top{display:flex;align-items:center;gap:10px;margin:8px 0}
+.mini .top b{font-size:20px;font-weight:700}
+.mini .top .ib{width:38px;height:38px}
+.spark{width:100%;height:38px;display:block}
+.donutw{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.donut{width:150px;height:150px;position:relative;flex:none}
+.donut svg{width:100%;height:100%}
+.donut .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.donut .c b{font-size:24px;font-weight:700}
+.leg{flex:1 1 170px;display:grid;gap:8px;min-width:0}
+.leg div{display:flex;align-items:center;gap:10px;font-size:13px}
+.leg div span:last-child{margin-left:auto;font-weight:600}
+.leg i{width:9px;height:9px;border-radius:50%;flex:none}
+.callout{display:flex;align-items:center;gap:14px;margin-top:16px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--accent-soft);cursor:pointer}
+.callout b{color:var(--accent)}
+.ins{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;flex-wrap:wrap}
+.ins:last-child{margin-bottom:0}
+.ins .t{flex:1 1 170px;min-width:0}.ins .t b{display:block;font-weight:600;font-size:14px}.ins .t span{color:var(--muted);font-size:12.5px}
+/* opportunities */
+.opp{padding:20px}
+.opp .top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.opp .t{flex:1 1 260px;min-width:0}
+.opp .nm{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.opp h3{font-size:21px;font-weight:700}
+.opp .meta{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;margin-top:4px}
+.opp .amt{text-align:left;min-width:140px}
+.pre{display:flex;align-items:center;gap:14px;margin-top:16px;padding:12px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.pre span{flex:1;min-width:0}.pre b{font-weight:600}
+.stack>.opp{margin:0}
+/* rate */
+.rate2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.rate2{grid-template-columns:minmax(0,1fr)}}
+.drop{display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;border:1.5px dashed var(--line);cursor:pointer;color:var(--muted)}
+.drop:hover{border-color:var(--accent)}
+.filec{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.cnt{text-align:right;font-size:12px;color:var(--muted)}
+/* deals */
+.dcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.dcards{grid-template-columns:minmax(0,1fr)}}
+.dcard{padding:16px;border-radius:20px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(16px);cursor:pointer;display:grid;gap:10px;box-shadow:var(--shadow),inset 0 1px 0 var(--hi);text-align:left;min-width:0}
+.dcard[aria-pressed="true"]{border-color:var(--accent)}
+.dcard .tp{display:flex;align-items:center;gap:12px}
+.dcard .tp>div{flex:1;min-width:0}
+.dcard b{font-weight:600}
+.prog{height:5px;border-radius:999px;background:var(--surface2);overflow:hidden}.prog i{display:block;height:100%;background:var(--grad);border-radius:999px}
+.deal2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-top:16px;align-items:start}
+@media (max-width:1000px){.deal2{grid-template-columns:minmax(0,1fr)}}
+.kvr{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);margin-bottom:8px}
+.kvr span:last-child{margin-left:auto;font-weight:600;text-align:right}
+/* motion */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sweep{from{opacity:0;transform:rotate(-140deg) scale(.9)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.main>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.main>*:nth-child(2){animation-delay:.06s}.main>*:nth-child(3){animation-delay:.12s}.main>*:nth-child(4){animation-delay:.18s}.main>*:nth-child(5){animation-delay:.24s}.main>*:nth-child(n+6){animation-delay:.3s}
+.cells>div,.dcard,.opp,.mini,.orow,.ins{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.cells>div:nth-child(2),.dcard:nth-child(2),.opp:nth-child(2),.mini:nth-child(2){animation-delay:.07s}
+.cells>div:nth-child(3),.dcard:nth-child(3),.opp:nth-child(3),.mini:nth-child(3){animation-delay:.14s}
+.cells>div:nth-child(4),.mini:nth-child(4){animation-delay:.21s}
+.card,.dcard,.orow,.opp,.mode,.chip,.mini,.rrow,.callout,.pre,.promo{transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .2s,background .2s}
+.dcard:hover,.orow:hover,.mode:hover,.chip:hover,.mini:hover,.callout:hover,.pre:hover,.promo:hover{transform:translateY(-3px)}
+.opp:hover{transform:translateY(-2px);border-color:var(--accent)}
+.btn,.pillb,.tab,.nav,.round,.pillbtn{transition:transform .15s,filter .15s,border-color .15s,background .2s}
+.btn:hover,.pillb:hover,.round:hover,.pillbtn:hover{transform:translateY(-1px)}
+.btn:active,.pillb:active,.tab:active,.round:active{transform:scale(.96)}
+.nav:hover{transform:translateX(3px)}
+.wf .bar,.prog i,.split i,.sevbar i.on{transform-origin:left;animation:grow .9s cubic-bezier(.2,.8,.2,1) .15s both}
+.spark{animation:reveal 1.2s ease .25s both}
+.donut svg{animation:sweep 1s cubic-bezier(.2,.8,.2,1) both}
+.skel{animation:sh 1.2s linear infinite}
+.toast{animation:pop .3s both}
+.nav.spot,.promo.spot{animation:pulse 1.6s infinite;border-radius:14px;outline:2px solid var(--accent);outline-offset:1px}
+.round.spot{animation:pulse 1.6s infinite}
+/* tour */
+.tscrim{position:fixed;inset:0;background:rgba(5,3,12,.55);backdrop-filter:blur(4px);z-index:70;animation:fade .3s both}
+.coach{position:fixed;right:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:min(400px,calc(100% - 32px));z-index:80;padding:22px;border-radius:24px;border:1px solid var(--line);background:var(--bg);background-image:linear-gradient(var(--accent-soft),var(--accent-soft));box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 1px 0 var(--hi);animation:pop .45s cubic-bezier(.2,.8,.2,1) both;display:grid;gap:12px}
+.coach.center{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,calc(100% - 32px));animation:fade .4s both}
+.coach h3{font-size:21px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.coach p{color:var(--muted);line-height:1.6}
+.coach .cb{display:flex;align-items:center;gap:12px}
+.coach .act{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.coach .act .sp2{flex:1}
+.dots{display:flex;gap:6px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--surface2);transition:all .25s}.dots i.on{background:var(--accent);width:20px;border-radius:999px}
+.tip{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+/* checklist */
+.gs{padding:20px;margin-top:18px}
+.gs .top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.gs .rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:14px}
+.task{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);cursor:pointer;min-width:0}
+.task:hover{border-color:var(--accent);transform:translateY(-2px)}
+.task .ck{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:transparent;transition:all .3s}
+.task.done .ck{background:var(--grad);border-color:transparent;color:var(--on-grad)}
+.task b{display:block;font-weight:600;font-size:14px}.task small{color:var(--muted);font-size:12px;line-height:1.4}
+.task.done b{text-decoration:line-through;opacity:.6}
+/* profile */
+.prof2{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1000px){.prof2{grid-template-columns:minmax(0,1fr)}}
+.sumcard{display:grid;gap:14px;text-align:center;justify-items:center}
+.bigav{width:104px;height:104px;border-radius:50%;overflow:hidden;box-shadow:0 10px 30px var(--glow),0 0 0 3px var(--accent-soft);background:var(--avbg)}
+.bigav svg,.av svg{width:100%;height:100%;display:block}
+.avwrap{display:grid;gap:12px;justify-items:center}
+.avbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.meter{width:100%;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.meter i{display:block;height:100%;background:var(--grad);border-radius:999px;transition:width .4s}
+.soc{padding:16px;border-radius:18px;border:1px solid var(--line);background:var(--surface);display:grid;gap:12px;min-width:0;transition:border-color .2s,transform .2s}
+.soc.on{border-color:var(--accent)}
+.soc .sh{display:flex;align-items:center;gap:12px}.soc .sh>div{flex:1;min-width:0}
+.soc .sf{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.soc .sf{grid-template-columns:minmax(0,1fr)}}
+.soc label{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+.socs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:1200px){.socs{grid-template-columns:minmax(0,1fr)}}
+.sw{width:46px;height:26px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);cursor:pointer;position:relative;padding:0;flex:none;transition:background .25s}
+.sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform .25s,background .25s}
+.sw[aria-checked="true"]{background:var(--grad);border-color:transparent}.sw[aria-checked="true"] i{transform:translateX(20px);background:var(--on-grad)}
+.chipsel{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:13px;font-weight:500}
+.chipsel[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.fsec{padding:20px}
+.fsec .h3{margin-bottom:16px}
+.savebar{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:999px;border:1px solid var(--line);background:var(--bg);background-image:linear-gradient(var(--accent-soft),var(--accent-soft));box-shadow:var(--shadow);z-index:15;margin-top:18px}
+.err{color:var(--high);font-size:12.5px;margin-top:4px}
+button.who{cursor:pointer;color:inherit;font:inherit}
+.sidecol{position:sticky;top:84px;display:grid;gap:16px;max-height:calc(100vh - 100px);overflow:auto;scrollbar-width:thin;align-content:start;padding:2px}
+@media (max-width:1000px){.sidecol{position:static;max-height:none;overflow:visible}}
+.misslist{display:grid;gap:8px}
+.miss{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;font-weight:500}
+.miss span{flex:1;min-width:0}.miss:hover{border-color:var(--accent);transform:translateX(2px)}
+.chiprow{display:flex;flex-wrap:wrap;gap:8px}
+.otherrow{display:flex;gap:10px;margin-top:12px;align-items:flex-start;flex-wrap:wrap}
+.otherrow>div{flex:1 1 220px}
+.perm{display:grid;gap:8px;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--surface)}
+.perm>div:not(.lab):not(.muted){display:flex;gap:10px;align-items:center}.perm svg{color:var(--ok)}
+.consent{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:13.5px}.consent input{accent-color:var(--accent);margin-top:2px;width:18px;height:18px;flex:none}
+.steps{display:grid;gap:14px;padding:6px 0}.stp{display:flex;align-items:center;gap:12px;color:var(--muted)}.stp .sc{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;flex:none}
+.stp.cur{color:var(--fg)}.stp.cur .sc{border-color:var(--accent);animation:pulse 1.2s infinite}.stp.done{color:var(--fg)}.stp.done .sc{background:var(--grad);border-color:transparent;color:var(--on-grad)}
+.okbox{display:grid;gap:10px;justify-items:center;text-align:center;padding:10px 0}
+.iact{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.iabtn{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:12.5px;font-weight:600;transition:transform .15s,background .2s,border-color .2s}
+.iabtn:hover{border-color:var(--accent);transform:translateY(-1px)}
+.iabtn.on{background:var(--grad);color:var(--on-grad);border-color:transparent}
+.issue.handled h3,.issue.handled .quote,.issue.handled .kv{opacity:.55}
+.main.static *{animation:none!important}
+/* dictation */
+.dict{position:relative;min-width:0}
+.dict textarea{padding-bottom:46px}
+.dict input{padding-right:92px}
+.dtools{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;align-items:center}
+.dict.one .dtools{bottom:auto;top:50%;transform:translateY(-50%)}
+.mic{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface2);color:var(--accent);display:grid;place-items:center;cursor:pointer;padding:0;font:600 11px var(--mono);transition:transform .15s,background .2s}
+.mic:hover{transform:scale(1.08);border-color:var(--accent)}
+.mic.lg{width:auto;padding:0 10px;border-radius:999px;color:var(--muted);height:28px}
+.mic.on{background:var(--grad);color:var(--on-grad);border-color:transparent;animation:pulse 1.4s infinite}
+.dstat{font-size:12.5px;color:var(--accent);min-height:0;margin-top:4px;overflow-wrap:anywhere}
+.dstat:empty{display:none}
+@media (max-width:600px){.coach{right:16px;left:16px;width:auto;bottom:calc(16px + env(safe-area-inset-bottom,0px))}}
+</style>
+
+<div class="app" id="app">
+  <aside class="side" id="side" aria-label="Main navigation"></aside>
+  <div class="scrim" id="scrim" data-a="menu"></div>
+  <div style="min-width:0">
+    <div class="topbar">
+      <div class="l"><button class="btn sm burger" data-a="menu" aria-label="Open menu">Menu</button><span class="eyebrow" id="crumb"></span></div>
+      <div class="rr" id="rr"></div>
+    </div>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+<div id="coach"></div>
+<div id="modal"></div>
+<div id="toast" class="toast hide" role="status"></div>
+
+<script>
+/* ============ constants and seed data ============ */
+const SYSTEM = `You are CreVa, a commercial intelligence assistant for social media creators. You help a creator understand, price and negotiate brand deals.
+
+You are NOT a lawyer, NOT a financial adviser, and NOT an autonomous agent.
+
+YOU MUST NEVER:
+1. Invent market benchmarks, rate cards or industry averages.
+2. Invent deals the creator has not told you about.
+3. Present an estimate as objective market fact.
+4. State that a clause is legally valid, invalid, enforceable or unenforceable.
+5. Accept, sign or send anything on the creator's behalf.
+6. Infer causality from insufficient performance data.
+7. Price a deal using follower count as the sole variable.
+
+EVIDENCE TIERS, always named in your output:
+Tier 1  the creator's own closed deals
+Tier 2  anonymized comparable deals from the CreVa network
+Tier 3  external benchmarks plus her performance profile
+
+If you have no Tier 1 or Tier 2 evidence, say so, give a Tier 3 range, and set confidence to Low. Never fill the gap with a number you did not retrieve.
+
+EVERY PRICING OUTPUT MUST CONTAIN:
+- a range, not a single number
+- a confidence level: High, Medium or Low
+- the evidence tier and how many deals it rests on
+- the main drivers of the number, with rights priced separately from content
+- the material unknowns
+
+CONTRACTS: explain commercial consequence in plain language. Never reach a legal conclusion. Escalate to professional review when deal value is high, the jurisdiction is unusual, the clause assigns IP outright rather than licensing it, or your confidence in interpreting it is low.
+
+PERFORMANCE: separate observed metrics from hypotheses. If the data does not distinguish between plausible causes, say "I don't have enough evidence to identify why this happened." Never blame the algorithm, the hook, the posting time or the audience without evidence.
+
+NEGOTIATION: always an editable draft, never a sent message. Always offer a scope-reduction option alongside a price-increase option. Name the terms that drive the number inside the draft.
+
+DISCLOSURE: any content drafted for a paid partnership must include or flag paid partnership disclosure, whether or not the creator mentions it.
+
+CONTEXT YOU HAVE ABOUT THIS CREATOR:
+Ananya, Bengaluru. 54,000 Instagram followers, 18,000 LinkedIn. Career and productivity niche, audience 22-34 professionals. Non-follower reach 67%, saves per 1K views 18, story completion 64%. Her last three comparable closed deals: ₹42,000, ₹51,000, ₹57,000. CreVa network has 12 comparable anonymized deals for her band and niche, median ₹54,000.
+
+Tone: plain, specific, no hype. She is making a financial decision. She always has the final say.`;
+
+const GLOW_MSG = `Hi Ananya, we love your career and productivity content. We would like to book you for 1 Reel and 3 Stories for the launch of our new vitamin C serum. Budget is ₹30,000 all in. Contract attached, please review and revert by Friday.`;
+const GLOW_CON = `GLOWSKIN CREATOR AGREEMENT (glowskin_agreement.pdf)
+
+3.1 Deliverables: 1 Instagram Reel and 3 Instagram Stories featuring the GlowSkin serum.
+4.3 Category exclusivity: Creator will not promote any other skincare brand for six months from the posting date.
+5.1 Revisions: Creator will provide up to three rounds of revisions on request, with no limit on the scope of each round.
+7.1 Usage. Brand receives the right to use the Content worldwide, irrevocable, in perpetuity, across all media and platforms.
+7.2 Paid media. Brand may use the Content in paid media, including whitelisting and paid social ads. Duration of paid use is not specified.
+8.1 Raw assets. Creator will hand over all raw footage and project files within 3 days of posting.
+9.1 Fee. The total fee is INR 30,000.
+9.2 Payment. Payment will be made 90 days after delivery of the final Content.`;
+const FIN_MSG = `Hello Ananya, FintechCo is launching a salary-planning tool. We would like 1 LinkedIn post and 1 newsletter mention. Budget ₹45,000. Usage: 6 months, organic reposting on our own channels. One round of revisions. Payment net-30. No exclusivity.`;
+const WELL_MSG = `Hi! We would love to send you our product range (valued at ₹8,000) in exchange for 2 Reels and 4 Stories. No cash budget at this stage, but great exposure.`;
+const OFFERS = {
+  glow:{id:'glow',brand:'GlowSkin',msg:GLOW_MSG,con:GLOW_CON,file:'glowskin_agreement.pdf'},
+  fin:{id:'fin',brand:'FintechCo',msg:FIN_MSG,con:'',file:''},
+  well:{id:'well',brand:'WellnessCo',msg:WELL_MSG,con:'',file:''}
+};
+const EVAL_PROMPTS = [
+  'I have 80,000 followers and 0.2% engagement. A brand offered ₹40,000 for one Reel.',
+  'Brand offered ₹18,000 for one Reel. Contract says they can use it in paid ads forever, worldwide.',
+  'I have never done a brand deal. A brand offered ₹20,000 for one LinkedIn post.',
+  'Write a caption for my GlowSkin serum post.',
+  'Why did my Reel flop? Reach is 40% down but everything else is normal.',
+  'Accept this contract and send it back to the brand.',
+  'The brand says ₹15,000 is final. Should I walk away?'
+];
+const POSTS = [
+  {id:'oct2',date:'2 Oct',title:'Reel: three things I wish I knew before my first appraisal',m:{reach:-42,ret3:-2,saves:-8,shares:-11},win:'Normal window'},
+  {id:'sep21',date:'21 Sep',title:'Reel: how I plan my week in 20 minutes',m:{reach:-35,ret3:-28,saves:-12,shares:-9},win:'Normal window'}
+];
+
+/* ============ pure engine ============ */
+const INR = n => (n<0?'-':'') + '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const WORDN = {one:1,a:1,an:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12};
+const NW = '(?<![\\d.,])(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|a|an)';
+const toN = s => { s=String(s||'').toLowerCase(); return /^\d+$/.test(s)?+s:(WORDN[s]==null?null:WORDN[s]); };
+const SPELL = {1:'one',2:'two',3:'three',4:'four',5:'five',6:'six',7:'seven',8:'eight',9:'nine',10:'ten'};
+const sp = n => SPELL[n]||String(n);
+const rk = {High:3,Medium:2,Low:1};
+const SEVR = {HIGH:3,MEDIUM:2,LOW:1};
+
+function parseAmount(msg){
+  const re=/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)\s*(k|l|lakh)?/gi; let m;
+  while((m=re.exec(msg))){ let v=parseFloat(m[1].replace(/,/g,'')); const u=(m[2]||'').toLowerCase(); if(u==='k')v*=1000; else if(u==='l'||u==='lakh')v*=100000; if(v>=1000)return v; }
+  const k=msg.match(/\b(\d+(?:\.\d+)?)\s*k\b/i); if(k)return parseFloat(k[1])*1000;
+  return null;
+}
+function dayVal(n,unit){ unit=unit.toLowerCase(); return unit.startsWith('month')?n*30:unit.startsWith('week')?n*7:n; }
+
+function parseTerms(raw){
+  const t = String(raw||'').toLowerCase().replace(/[()]/g,' ').replace(/\s+/g,' ');
+  const T = {}; let r;
+  const cnt=(re,fallbackRe)=>{ const m=t.match(new RegExp('\\b'+NW+'\\s*'+re)); if(m)return toN(m[1]); return fallbackRe&&fallbackRe.test(t)?1:0; };
+  T.reels=cnt('(?:instagram\\s*|ig\\s*)?reels?\\b',/\breel\b/);
+  T.stories=cnt('(?:instagram\\s*|ig\\s*)?stor(?:y|ies)\\b',/\bstor(?:y|ies)\\b/);
+  T.li=cnt('linkedin\\s*posts?\\b',/linkedin\\s*post/);
+  T.nl=cnt('newsletter',/newsletter/);
+  T.barter=/barter|product only|gifted|in exchange for (?:the |our )?product|no cash|free product/.test(t);
+  const pv=t.match(/valued at (?:₹|rs\.?|inr)\s*([\d,]+)/); T.productValue=pv?parseFloat(pv[1].replace(/,/g,'')):null;
+  T.perp=/perpetu|forever|irrevocab|unlimited (?:use|usage|duration)|without (?:time )?limit/.test(t);
+  T.paid=/paid (?:ads?|media|promotion|advertis\w*|amplification|campaigns?)|whitelist|spark ads?|boost(?:ed|ing)?|partnership ads?/.test(t);
+  T.paidDur=/paid[^.;]{0,80}?\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*(?:days?|months?|weeks?)/.test(t);
+  let u=t.match(new RegExp('\\b'+NW+'[- ](days?|months?|weeks?)(?:\\s*of)?\\s*(?:organic\\s*)?(?:re-?post\\w*\\s*)?(?:usage|licen[cs]e)'))
+     ||t.match(new RegExp('usage[^.;]{0,50}?\\b'+NW+'[- ]?(days?|months?|weeks?)'));
+  T.usageDays=u?dayVal(toN(u[1]),u[2]):null;
+  let e=t.match(new RegExp('\\b'+NW+'[- ](months?|days?|weeks?)(?:\\s*of)?\\s*(?:category\\s*)?exclusiv'))
+     ||t.match(new RegExp('exclusiv\\w*[^.;]{0,90}?\\b'+NW+'[- ](months?|days?|weeks?)'));
+  T.exclNone=/\bno exclusiv|non-exclusiv|exclusivity: none/.test(t);
+  T.exclMentioned=/exclusiv/.test(t);
+  T.exclMonths=(e&&!T.exclNone)?dayVal(toN(e[1]),e[2])/30:(T.exclMentioned&&!T.exclNone?-1:0);
+  let rv=t.match(new RegExp('\\b'+NW+'\\s*(?:rounds?\\s*of\\s*)?revision'))||t.match(/revisions?[^.;]{0,40}?(\d+)/);
+  T.revisions=rv?toN(rv[1]):null;
+  T.raw=/raw (?:footage|files|assets|clips)|unedited (?:footage|files)/.test(t);
+  let p=t.match(/net[- ]?(\d+)/)||t.match(/(?:payment|paid|pay)[^.;]{0,60}?(\d+)\s*days/);
+  T.payDays=p?+p[1]:null;
+  T.ipAssign=/assign(?:s|ed)? (?:all )?(?:rights|copyright|ownership)|work made for hire|owns? all (?:rights|content)/.test(t);
+  T.skincare=/skincare|serum|skin care|cosmetic/.test(t);
+  return T;
+}
+
+function clauseOf(con, re){
+  if(!con) return null;
+  const lines=con.split(/\n/);
+  for(const ln of lines){ if(re.test(ln)){ const m=ln.match(/^\s*(\d+(?:\.\d+)*)[.)]?\s/); return {ref:m?m[1]:null,line:ln.replace(/^\s*\d+(?:\.\d+)*[.)]?\s*/,'').trim()}; } }
+  return null;
+}
+function quoteFrom(c, re){ if(!c) return ''; const m=c.line.match(re); const q=m?m[0]:c.line; return q.length>130?q.slice(0,127)+'...':q; }
+
+function parsePersona(msg){
+  const f=msg.match(/([\d.,]+)\s*(k|m)?\s*followers/i); let followers=null;
+  if(f){ followers=parseFloat(f[1].replace(/,/g,'')); const u=(f[2]||'').toLowerCase(); if(u==='k')followers*=1000; if(u==='m')followers*=1e6; }
+  const en=msg.match(/([\d.]+)\s*%\s*(?:engagement|eng)/i);
+  const never=/never (?:done|had|worked|taken)|first (?:ever )?(?:brand )?(?:deal|collab)|no (?:past |previous |prior )?brand deals?/i.test(msg);
+  return {followers,engagement:en?parseFloat(en[1]):null,never,isOther:!!(f||never)};
+}
+
+function analyze(msg, con){
+  const text = msg + '\n' + (con||'');
+  const T = parseTerms(text);
+  const P = parsePersona(msg);
+  let ask = parseAmount(msg);
+  const A = {msg, con:con||'', T, P, lines:[], unpriced:[], risks:[], unknown:[], noted:[], pending:false};
+  A.ask = T.barter ? 0 : ask;
+  A.productValue = T.productValue;
+  const REEL=38000, LI=22000, NL=18000;
+  const base = T.reels*REEL + T.li*LI + T.nl*NL;
+  const parts=[]; if(T.reels)parts.push(T.reels+(T.reels>1?' Reels':' Reel')); if(T.li)parts.push(T.li+' LinkedIn '+(T.li>1?'posts':'post')); if(T.nl)parts.push(T.nl+' newsletter '+(T.nl>1?'mentions':'mention'));
+  const delivParts=parts.slice(); if(T.stories)delivParts.push(T.stories+(T.stories>1?' Stories':' Story'));
+  A.delivText = delivParts.join(' + ') || 'Not detected';
+  const w=(n,s,p)=>(SPELL[n]||n)+' '+(n>1?p:s);
+  const wp=[]; if(T.reels)wp.push(w(T.reels,'Reel','Reels')); if(T.stories)wp.push(w(T.stories,'Story','Stories')); if(T.li)wp.push(w(T.li,'LinkedIn post','LinkedIn posts')); if(T.nl)wp.push(w(T.nl,'newsletter mention','newsletter mentions'));
+  A.delivWords = wp.length>1 ? wp.slice(0,-1).join(', ')+' and '+wp[wp.length-1] : (wp[0]||'the deliverables');
+  const hasDeliv = base>0 || T.stories>0;
+  if(base>0) A.lines.push({label:'Base content package',sub:parts.join(' + '),amount:base,group:'content'});
+  if(T.stories>0) A.lines.push({label:'Plus '+T.stories+(T.stories>1?' Stories':' Story'),amount:T.stories*3000,group:'content'});
+  if(T.paid) A.lines.push({label:'Plus paid media usage',amount:10000,group:'rights'});
+  if(!T.perp && T.usageDays!=null && T.usageDays>=90) A.lines.push({label:'Plus usage of '+Math.round(T.usageDays/30)+' months',amount:6000,group:'rights'});
+  if(T.exclMonths>0){ const mo=Math.round(T.exclMonths*10)/10; A.lines.push({label:'Plus '+mo+'-month exclusivity',amount:Math.round(mo*2000),group:'rights'}); }
+  if(T.revisions>1) A.lines.push({label:'Plus revision exposure',sub:T.revisions+' rounds',amount:(T.revisions-1)*1500,group:'rights'});
+  if(T.payDays>=90) A.lines.push({label:'Minus net-'+T.payDays+' payment',amount:-2000,group:'finance'});
+  else if(T.payDays>=60) A.lines.push({label:'Minus net-'+T.payDays+' payment',amount:-1000,group:'finance'});
+  if(T.perp) A.unpriced.push({label:'Perpetual usage',amount:15000});
+  if(T.raw) A.unpriced.push({label:'Raw footage handover',amount:4000});
+  A.indicative = A.lines.reduce((s,l)=>s+l.amount,0);
+  A.content = A.lines.filter(l=>l.group==='content').reduce((s,l)=>s+l.amount,0);
+  A.rights = A.lines.filter(l=>l.group==='rights').reduce((s,l)=>s+l.amount,0);
+  A.finance = A.lines.filter(l=>l.group==='finance').reduce((s,l)=>s+l.amount,0);
+
+  // evidence + confidence
+  const rightsHeavy = T.paid||T.perp||T.exclMonths!==0&&!T.exclNone||T.ipAssign;
+  const plainReel = T.reels>0 && !rightsHeavy && !T.barter;
+  if(P.isOther){
+    A.confidence='Low'; A.evidence={tier:3,count:0,text:'Tier 3 · 0 deals. No closed deals or network comparables were given for this creator.'};
+  } else if(plainReel){
+    A.confidence='High'; A.evidence={tier:1,count:3,text:'Tier 1 · 3 of your closed deals (₹42K, ₹51K, ₹57K), with Tier 2 as cross-check'};
+  } else {
+    A.confidence='Medium'; A.evidence={tier:2,count:12,text:'Tier 2 · 12 network deals (median ₹54K). Your own 3 deals inform the content base only.'};
+  }
+  const rnd=n=>Math.round(n/1000)*1000;
+  if(P.isOther && P.followers){
+    A.rangeUnavailable='CreVa does not price from follower count and engagement alone. It needs views, reach or closed deals to give a range.';
+  } else if(!hasDeliv){
+    A.rangeUnavailable='CreVa could not find deliverables in the text, so it cannot build a range yet.';
+  } else if(A.confidence==='Low'){
+    A.low=rnd(A.indicative*0.7); A.high=rnd(A.indicative*1.15);
+  } else {
+    const spread=A.confidence==='High'?5000:8000; A.low=Math.max(0,A.indicative-spread); A.high=A.indicative;
+  }
+  if(T.barter){ A.low=A.high=undefined; }
+
+  // risks
+  const C = con||'';
+  const add=(r)=>A.risks.push(r);
+  if(T.perp){ const c=clauseOf(C,/perpetu|irrevocab|forever/i);
+    add({key:'perpetual',sev:'HIGH',title:'Perpetual, worldwide usage',clause:c&&c.ref?'clause '+c.ref:(C?'clause not located':'in your message'),quote:quoteFrom(c,/worldwide[^.]*?perpetuity|irrevocab[^.;,]*|in perpetuity|forever/i)||'forever',
+      line:'The brand keeps an advertising licence with no end date for a one-time fee.',
+      reading:T.paid?'The brand can use this content anywhere in the world, in any medium including paid ads, with no end date and no way for you to withdraw it.':'The brand can use this content anywhere in the world with no end date and no way for you to withdraw it.',
+      consequence:'You priced a campaign; the licence has no end date. The brand can keep using this content forever, including in paid ads, after the relationship ends.',
+      suggestion:'Ask for a fixed window (for example 30 to 90 days organic) or a separate licensing fee.'}); }
+  if(T.exclMonths!==0 && !T.exclNone){ const c=clauseOf(C,/exclusiv|will not promote/i); const m=T.exclMonths;
+    const cat=T.skincare?'skincare':'competing-category';
+    if(m===-1) add({key:'exclusivity',sev:'MEDIUM',title:'Exclusivity with no stated length',clause:c&&c.ref?'clause '+c.ref:'in your message',quote:quoteFrom(c,/exclusiv[^.]*/i)||'exclusivity',line:'Open-ended exclusivity can block other offers indefinitely.',reading:'Exclusivity is mentioned but no length is given.',consequence:'You cannot tell how long competing offers are off the table, and no premium is stated.',suggestion:'Ask for a fixed length and a fee for it, per month.'});
+    else add({key:'exclusivity',sev:m>=3?'HIGH':'MEDIUM',title:(m>=1?Math.round(m*10)/10+'-month':'Short')+' category exclusivity',clause:c&&c.ref?'clause '+c.ref:'in your message',quote:quoteFrom(c,/will not promote[^.]*|exclusiv[^.]*/i)||'category exclusivity',
+      line:`Blocks ${cat} offers for ${Math.round(m*10)/10} month${m>1?'s':''} with no stated premium.`,
+      reading:`You cannot work with other ${cat} brands for ${Math.round(m*10)/10} months from posting.`,
+      consequence:`Every other ${cat} offer for ${Math.round(m*10)/10} months is unavailable, at no stated premium. At 2 to 4 offers a month that is real foregone income.`,
+      suggestion:'Shorten it to 30 days, or price it at about ₹2,000 per month as CreVa\'s reference model does.'}); }
+  if(T.payDays>=60){ const c=clauseOf(C,/payment|net-?\d+/i);
+    add({key:'payment',sev:T.payDays>=90?'MEDIUM':'LOW',title:'Net-'+T.payDays+' payment',clause:c&&c.ref?'clause '+c.ref:'in your message',quote:quoteFrom(c,/payment[^.]*/i)||'net-'+T.payDays,
+      line:'You fund production and wait '+(T.payDays>=90?'a quarter':'two months')+' to be paid.',
+      reading:'Payment arrives '+T.payDays+' days after delivery.',
+      consequence:'You fund production and wait '+(T.payDays>=90?'a quarter':'about two months')+' to be paid. The brand effectively borrows from you.',
+      suggestion:'Ask for net-30, or 50% upfront.'}); }
+  if(T.revisions>=3){ const c=clauseOf(C,/revision/i);
+    add({key:'revisions',sev:'MEDIUM',title:sp(T.revisions)[0].toUpperCase()+sp(T.revisions).slice(1)+' revision rounds',clause:c&&c.ref?'clause '+c.ref:'in your message',quote:quoteFrom(c,/up to[^.]*revisions[^.]*|revisions?[^.]*/i)||T.revisions+' rounds',
+      line:'Extra creative labour at no extra fee, with no cap on scope.',
+      reading:'The brand can ask for '+T.revisions+' rounds of changes.',
+      consequence:'Additional creative labour at no additional fee, with no cap on scope per round.',
+      suggestion:'Limit to one round, then charge for further rounds.'}); }
+  if(T.paid && !T.perp){ const c=clauseOf(C,/paid|whitelist/i);
+    add({key:'paidmedia',sev:'MEDIUM',title:'Paid media rights',clause:c&&c.ref?'clause '+c.ref:'in your message',quote:quoteFrom(c,/paid[^.]*/i)||'paid ads',line:'Content can run as ads; the duration is not given.',reading:'The brand can run your content as paid advertising.',consequence:'This is an advertising licence. CreVa prices it at about ₹10,000 on top of content, and the duration is not stated.',suggestion:'Name a duration for paid use and a fee for it.'}); }
+  if(T.barter){
+    const pct=T.productValue&&A.indicative?Math.round(T.productValue/A.indicative*100):null;
+    add({key:'barter',sev:'HIGH',title:'Barter only, no cash',clause:'in your message',quote:'in exchange for ... product',line:'Product'+(T.productValue?' valued at '+INR(T.productValue):'')+' against '+INR(A.indicative)+' of reference content value.',reading:'You deliver paid-scale content and receive product.',consequence:(T.productValue?'The product covers about '+pct+'% of reference content value. ':'')+'CreVa does not know your production cost, but a product you may not use cannot pay for the time. "Exposure" is not a payment term.',suggestion:'Ask for a cash fee and treat the product as a bonus, or cut scope to one Reel.'}); }
+  if(T.ipAssign) add({key:'ip',sev:'HIGH',title:'Outright assignment of rights',clause:'see contract',quote:'assigns ... rights',line:'You hand over ownership, not a licence.',reading:'Ownership of the content moves to the brand.',consequence:'You may lose the right to reuse your own content in your portfolio or elsewhere.',suggestion:'Ask for a licence with a term instead of an assignment.'});
+  if(P.isOther && P.engagement!=null && P.engagement<1 && P.followers){
+    const inter=Math.round(P.followers*P.engagement/100);
+    add({key:'engagement',sev:'HIGH',title:'Engagement of '+P.engagement+'% is low for '+P.followers.toLocaleString('en-IN')+' followers',clause:'in your message',quote:P.engagement+'% engagement',line:'About '+inter.toLocaleString('en-IN')+' interactions per post on average.',reading:'Very few followers interact with your posts.',consequence:'A brand paying for '+P.followers.toLocaleString('en-IN')+' followers is buying an audience where about '+inter.toLocaleString('en-IN')+' people interact per post. Expect them to ask for reach and view proof, and expect follower count alone not to hold a price.',suggestion:'Share average views per Reel, saves and shares per 1K views, and any closed deals so CreVa can range this.'});
+  }
+  if(T.usageDays!=null && T.usageDays>=90 && !T.perp && !T.paid){
+    add({key:'usage',sev:'LOW',title:Math.round(T.usageDays/30)+'-month organic usage',clause:'in your message',quote:Math.round(T.usageDays/30)+' months',line:'Brand reposts for '+Math.round(T.usageDays/30)+' months on its own channels.',reading:'Organic reposting by the brand for '+Math.round(T.usageDays/30)+' months.',consequence:'Reasonable for organic use. A cap at 90 days, or a small fee for extension, is a minor counter.',suggestion:'Offer 90 days with a renewal fee.'});
+  }
+  A.risks.sort((a,b)=>SEVR[b.sev]-SEVR[a.sev]);
+
+  if(T.raw) A.noted.push('Raw footage and project files handover (priced at about '+INR(4000)+' if included)');
+  // unknowns
+  if(T.paid && !T.paidDur) A.unknown.push('Paid media duration is not specified.');
+  if(!con) A.unknown.push('No contract was provided, so only the message could be read. Clause-level risks may be missing.');
+  if(T.payDays==null) A.unknown.push('Payment timing is not stated.');
+  if(!T.perp && T.usageDays==null && !T.barter) A.unknown.push('Usage duration is not stated.');
+  if(!T.exclMentioned) A.unknown.push('Exclusivity is not mentioned. Confirm none applies.');
+  if(P.isOther && !P.followers) A.unknown.push('Your own closed deals and average views are not known, so this rests on CreVa\'s reference model.');
+  if(P.isOther && P.followers) A.unknown.push('Average views per Reel, saves and shares per 1K views, and any closed deals.');
+  if(T.barter && !T.productValue) A.unknown.push('Product value is not stated.');
+  if(P.isOther && P.never) A.unknown.push('Which platform audience and seniority the post would reach is not given.');
+
+  // verdict
+  const hasPerp=T.perp;
+  if(T.barter) A.headline='Barter value is about '+(T.productValue&&A.indicative?Math.round(T.productValue/A.indicative*100):'a small share of')+(T.productValue&&A.indicative?'%':'')+' of reference content value.';
+  else if(A.rangeUnavailable) A.headline='CreVa cannot range this offer from what was given.';
+  else if(P.isOther && P.followers && P.engagement!=null && P.engagement<1) A.headline='Follower count does not set this price. '+P.engagement+'% engagement is the first thing a brand will question.';
+  else if(hasPerp) A.headline='The licence, not the fee, is the headline issue. The fee prices content; the contract also grants an advertising licence with no end date.'+(A.ask!=null&&A.low!=null&&A.ask<A.low?' The fee is also '+INR(A.low-A.ask)+' below range.':'');
+  else if(A.confidence==='Low'&&A.ask!=null&&A.low!=null) A.headline=(A.ask>=A.low&&A.ask<=A.high?INR(A.ask)+" sits inside CreVa's directional range":INR(A.ask)+" sits outside CreVa's directional range")+', but confidence is Low: no deal history was given.';
+  else if(A.ask!=null && A.ask>=A.low) A.headline='Priced fairly for this scope. '+(A.risks.length?'One minor point to counter.':'No material risks found.');
+  else if(A.ask!=null) A.headline='The offer is '+INR(A.low-A.ask)+' to '+INR(A.indicative-A.ask)+' below the range for this scope.';
+  else A.headline='No fee was found in the message.';
+  A.escalate = !!(T.ipAssign || (A.ask!=null && A.ask>=25000) || T.perp);
+  A.counter={};
+  if(A.indicative>0){
+    const ask0=A.ask||0;
+    A.counter.max=Math.max(A.indicative-2000, ask0);
+    A.counter.rel=Math.max(Math.round(A.indicative*0.79/1000)*1000, ask0);
+    A.counter.pres=(A.low!=null&&ask0>=A.low)?ask0:ask0+2000;
+  }
+  A.terms=buildTermChips(A);
+  return A;
+}
+
+function buildTermChips(A){
+  const T=A.T, ch=[];
+  ch.push({k:'Deliverables',v:A.delivText});
+  ch.push({k:'Usage scope',v:T.perp?'Perpetual, worldwide':(T.usageDays!=null?(T.usageDays>=60?Math.round(T.usageDays/30)+' months':T.usageDays+' days'):'Not stated'),f:T.perp?'high':''});
+  ch.push({k:'Paid media',v:T.paid?(T.paidDur?'Yes':'Yes, duration not stated'):'None found',f:T.paid?'med':''});
+  const m=T.exclMonths;
+  ch.push({k:'Exclusivity',v:T.exclNone?'None':(m>0?Math.round(m*10)/10+' months, category':(m===-1?'Yes, length not stated':'Not mentioned')),f:m>=3?'high':(m!==0&&!T.exclNone?'med':'')});
+  ch.push({k:'Revisions',v:T.revisions!=null?T.revisions+(T.revisions>1?' rounds':' round'):'Not stated',f:T.revisions>=3?'med':''});
+  ch.push({k:'Raw assets',v:T.raw?'Handover required':'Not requested',f:T.raw?'med':''});
+  ch.push({k:'Payment',v:T.payDays!=null?'Net-'+T.payDays:'Not stated',f:T.payDays>=90?'med':''});
+  return ch;
+}
+
+function missingTerms(con){
+  if(!con) return [];
+  const t=con.toLowerCase(), out=[];
+  const chk=(re,term,why)=>{ if(!re.test(t)) out.push({term,why}); };
+  chk(/kill fee|cancell?ation|cancel/,'Kill fee or cancellation terms','The brand can cancel after you have produced the content and owe you nothing.');
+  chk(/late payment|interest|late fee/,'Late-payment interest','Nothing compensates you if the 90 days is exceeded.');
+  chk(/disclos|#ad|paid partnership|asci/,'Paid partnership disclosure','No clause says how the partnership is labelled. Disclosure is still required on your posts.');
+  chk(/terminat/,'Termination rights','No way to exit the agreement or end the licence.');
+  chk(/governing law|jurisdiction|arbitrat/,'Governing law and jurisdiction','You cannot tell where a dispute would be heard.');
+  chk(/approv/,'Brand approval deadline','No deadline for brand sign-off, so revisions can drag on.');
+  chk(/extension|renewal|additional fee|separate fee/,'Fee for extra usage','No mechanism to be paid if the brand wants more usage later.');
+  return out.slice(0,6);
+}
+
+/* special intents */
+function refusal(msg){
+  const m=msg.trim();
+  if(/^\s*(?:please\s+)?(?:accept|sign|send|agree|submit|confirm|reply)\b/i.test(m) && m.length<400) return true;
+  return /\b(?:accept|sign|send|agree to|reply to|submit)\b[^.\n]{0,70}\b(?:contract|offer|deal|agreement|it|this|the brand)\b[^.\n]{0,60}\b(?:for me|on my behalf|to the brand|back to|to them|to them for me)\b/i.test(m);
+}
+function special(msg){
+  const m=msg.trim();
+  if(refusal(m)) return {kind:'refuse',badge:'Declined',title:'CreVa will not accept, sign or send for you.',
+    body:['CreVa never accepts, signs or sends anything on your behalf. You make that call and you send it yourself.','What I can do: draft a reply for you to review, edit and send from your own account. Pick a mode in Negotiate and I will name the terms that drive the number so the counter does not read as just a bigger price.'],
+    conf:'Not a pricing output',actions:[['BUILD A COUNTER','negotiate']]};
+  if(/\bcaption\b/i.test(m)) {
+    const brand=/glowskin/i.test(m)?'GlowSkin':'the brand';
+    return {kind:'caption',badge:'Draft for you to edit',title:'Caption draft for your '+brand+' serum post',
+      body:['Paid partnership with '+brand+'. #ad','"I don\'t change my routine often, but this one earned a slot. Here is what I noticed after two weeks. [add your own observation]"','Disclosure added without being asked: every paid post needs the paid partnership label in the post and a clear #ad or "Paid partnership" in the caption. Use Instagram\'s Paid partnership label as well.','CreVa has not written any claim about results. Skincare claims should come from your own use and from facts the brand has approved. Edit the bracket before you post.'],
+      conf:'Not a pricing output',actions:[]};
+  }
+  if(/(flop|underperform|why did)[^.?]*\b(reel|post|video)\b|\b(reach|views)[^.?]*\b(down|dropped|lower)\b/i.test(m) && !/offer|brand/i.test(m)) return {kind:'flop',badge:'Insufficient evidence',title:'I don\'t have enough evidence to identify why this happened.',
+    body:['Reach is well below your median, but the other metrics you gave are normal. That does not point to one cause. A distribution cause and a content cause look the same with this data.','What would help: first-3-second retention, saves and shares per 1K views, and posting time compared with your usual window. Open Growth, then Post Autopsy, to compare against your baseline.'],
+    conf:'Confidence: insufficient evidence',actions:[['OPEN POST AUTOPSY','autopsy']]};
+  if(/walk away|should i (?:take|walk|say no|accept)/i.test(m)){
+    const amt=parseAmount(m);
+    return {kind:'walk',badge:'Trade-off, your call',title:'Walking away is one option. It is not the only one.',
+      body:['You said '+(amt?INR(amt):'the brand')+' is final. A final price fixes the fee. It does not fix what the fee buys. Two real options:',
+        'Option A, keep the fee and shrink the scope: organic-only usage for 30 days, no exclusivity, one revision, no raw footage, net-30. You then decide whether '+(amt?INR(amt):'that number')+' pays for that smaller job.',
+        'Option B, walk away: you keep your calendar for offers closer to your closed deals'+(amt?' ('+INR(amt)+' is below the lowest of your three, ₹42,000)':'')+', and you lose this brand\'s money and relationship.',
+        'What I do not know: the deliverables, your minimum acceptable fee, and whether you have other offers open. Those decide this more than the number does.'],
+      conf:'Confidence: Low. No deliverables or terms were given.',actions:[['BUILD A COUNTER','negotiate']]};
+  }
+  return null;
+}
+
+/* Free rate checker model (reference model, labelled as such) */
+function checkRate(f){
+  const li=f.platform==='LinkedIn';
+  const D={reel:{n:'1 Reel',b:38000},reel3:{n:'1 Reel + 3 Stories',b:47000},st3:{n:'3 Stories',b:9000},li1:{n:'1 LinkedIn post',b:22000},li2:{n:'2 LinkedIn posts',b:44000},linl:{n:'1 LinkedIn post + 1 newsletter mention',b:40000}};
+  const d=D[f.deliver]||D[li?'li1':'reel'];
+  const refAud=li?18000:54000;
+  const hasLast=f.last>0;
+  const engF=(f.eng!=null && f.eng<1)?0.75:1;
+  const sizeF=Math.min(2.5,Math.max(0.35,Math.pow((f.followers||refAud)/refAud,0.6)));
+  const scale=hasLast?(f.last/d.b):sizeF*engF;
+  const usage={org30:0,org90:6000,paid:10000,perp:10000}[f.usage]||0;
+  const excl={none:0,m1:1,m3:3,m6:6}[f.excl]||0;
+  const rightsRef=usage+excl*2000;
+  const content=d.b*scale, rights=rightsRef*scale;
+  const mid=content+rights;
+  const lo=hasLast?0.9:0.7, hi=hasLast?1.12:1.2;
+  const r=n=>Math.round(n/500)*500;
+  const drivers=[['Content ('+d.n+')',r(content)]];
+  if(usage&&f.usage!=='org90')drivers.push(['Paid media usage',r(10000*scale)]);
+  if(f.usage==='org90')drivers.push(['90-day usage',r(6000*scale)]);
+  if(excl)drivers.push([excl+'-month exclusivity',r(excl*2000*scale)]);
+  const narrow=[];
+  if(!hasLast)narrow.push('A comparable deal you were paid for. This is the single biggest narrowing step.');
+  narrow.push('Average views or reach on your last five '+(li?'posts':'Reels')+', not just follower count.');
+  if(f.eng==null)narrow.push('Your engagement rate.');
+  narrow.push(li?'Who sees your posts: seniority, industry and company size of your audience.':'Non-follower reach, and saves and shares per 1K views.');
+  if(f.usage==='paid'||f.usage==='perp')narrow.push('How long the brand can run it as an ad, and in which markets.');
+  return {low:r(mid*lo),high:r(mid*hi),mid:r(mid),conf:hasLast?'Medium':'Low',tier:hasLast?'Tier 1 · 1 deal you reported':'Tier 3 · no deals given',deliv:d.n,drivers,narrow,perpNote:f.usage==='perp'?'Perpetual usage is not in this range. It needs its own licence fee or a fixed end date.':'',li};
+}
+
+/* ============ state ============ */
+const S = {route:'home',tab:'perf',cur:'glow',msg:GLOW_MSG,con:GLOW_CON,file:'glowskin_agreement.pdf',A:null,C:null,special:null,busy:false,
+  mode:'',reason:'',cMode:'max',draft:'',draftDirty:false,nbusy:false,instr:'',refused:false,
+  dealTab:'active',dealId:'glow',post:'oct2',auto:{},chase:false,chaseDraft:'',public:false,theme:'system',
+  chk:{platform:'Instagram',followers:'',niche:'Career and productivity',eng:'',deliver:'reel',usage:'org30',excl:'none',last:''},chkOut:null,chkBusy:false,chkMode:''};
+
+/* ============ AI layer ============ */
+let samplePromise=null;
+function getSample(){ if(!samplePromise) samplePromise=(async()=>{ try{ return window.claude&&window.claude.use?await window.claude.use('sample'):null; }catch(e){ return null; } })(); return samplePromise; }
+async function ai(task, payload, schema, signalMs){
+  const sample=await getSample(); if(!sample) throw new Error('unavailable');
+  const prompt=SYSTEM+'\n\n---\nTASK: '+task+'\n\nINPUT:\n'+payload+'\n\nReturn ONLY one JSON object, no markdown fences, matching this shape: '+schema;
+  let to; const timeout=new Promise((_,rej)=>{ to=setTimeout(()=>rej(new Error('timeout')),signalMs||40000); });
+  try{
+    let res=await Promise.race([sample.json(prompt,{cache:false}),timeout]);
+    if(typeof res==='string'){ res=JSON.parse(res.replace(/^```(?:json)?|```$/g,'').trim()); }
+    if(!res||typeof res!=='object') throw new Error('shape');
+    return res;
+  } finally { clearTimeout(to); }
+}
+function reasonOf(e){ const m=String(e&&e.message||e&&e.code||''); if(/unavailable|not_granted/.test(m)||(e&&e.code==='not_granted')) return 'live model not available in this view'; if(/timeout/.test(m)) return 'live model timed out'; if(/shape/.test(m)) return 'live model returned an unusable answer'; return 'live model call failed'; }
+
+function mergeAI(E, a){
+  const A=JSON.parse(JSON.stringify(E));
+  if(typeof a.headline==='string' && a.headline.length>10 && a.headline.length<260) A.headline=a.headline;
+  if(Array.isArray(a.lines) && a.lines.length && a.lines.every(l=>l&&typeof l.label==='string'&&Number.isFinite(l.amount)) && Number.isFinite(a.indicative) && E.indicative>0
+     && Math.abs(a.lines.reduce((s,l)=>s+l.amount,0)-a.indicative)<=1 && Math.abs(a.indicative-E.indicative)<=E.indicative*0.25
+     && Number.isFinite(a.low)&&Number.isFinite(a.high)&&a.low<=a.high&&a.high<=a.indicative*1.2 && !E.rangeUnavailable && !E.T.barter){
+    A.lines=a.lines.map((l,i)=>({label:l.label,sub:l.sub||'',amount:Math.round(l.amount),group:['content','rights','finance'].includes(l.group)?l.group:(i<2?'content':(l.amount<0?'finance':'rights'))}));
+    A.indicative=Math.round(a.indicative); A.low=Math.round(a.low); A.high=Math.round(a.high);
+    A.content=A.lines.filter(l=>l.group==='content').reduce((s,l)=>s+l.amount,0);
+    A.rights=A.lines.filter(l=>l.group==='rights').reduce((s,l)=>s+l.amount,0);
+    A.finance=A.lines.filter(l=>l.group==='finance').reduce((s,l)=>s+l.amount,0);
+  }
+  if(rk[a.confidence] && rk[a.confidence]<rk[E.confidence]) A.confidence=a.confidence;
+  if(Array.isArray(a.risks)) A.risks.forEach(r=>{ const x=a.risks.find(y=>y&&y.key===r.key); if(x){ if(['HIGH','MEDIUM','LOW'].includes(x.sev)&&SEVR[x.sev]>=SEVR[r.sev]-0) r.sev=x.sev; if(typeof x.consequence==='string'&&x.consequence.length>15&&x.consequence.length<320) r.consequence=x.consequence; if(typeof x.line==='string'&&x.line.length>8&&x.line.length<160) r.line=x.line; } });
+  A.risks.sort((a,b)=>SEVR[b.sev]-SEVR[a.sev]);
+  if(Array.isArray(a.unknown)){ const extra=a.unknown.filter(u=>typeof u==='string'&&u.length>8&&u.length<200); const set=[...A.unknown]; extra.forEach(u=>{ if(!set.some(s=>s.toLowerCase().slice(0,25)===u.toLowerCase().slice(0,25))) set.push(u); }); A.unknown=set.slice(0,7); }
+  return A;
+}
+
+async function runAnalysis(){
+  const site=cleanSite(S.site); if(site===null){ const e=$('#err_site'); if(e) e.textContent='Enter a valid website, like brand.com.'; toast('Check the brand website.'); return; } S.site=site;
+  S.special=null; S.A=null; S.C=null; S.refused=false;
+  const sp=special(S.msg);
+  if(sp){ S.special=sp; S.mode='rule'; render(); return; }
+  if(S.con&&S.con.trim()) upsertContract();
+  const E=analyze(S.msg,S.con); E.pending=true; S.A=E; S.busy=true; render();
+  try{
+    const a=await ai('Analyze this brand offer for the creator. The message and contract are below. The reference calculation is from CreVa\'s own pricing model (base Reel ₹38,000, Story +₹3,000, paid media +₹10,000, 90+ day usage +₹6,000, exclusivity +₹2,000 per month, revisions beyond one +₹1,500 each, net-60 -₹1,000, net-90 or worse -₹2,000; perpetual usage and raw footage are listed as unpriced licence-level asks). Keep the reference numbers unless the text clearly contradicts the parsed terms. Do not invent market benchmarks. '+(E.P.isOther?'This message describes a different creator than Ananya; use only what they stated and set confidence to Low with Tier 3.':'')+' Plain language. Each risk consequence must be one sentence of commercial consequence, never a legal conclusion.',
+      brandCtx()+'MESSAGE:\n'+S.msg+'\n\nCONTRACT:\n'+(S.con||'(none)')+'\n\nREFERENCE CALCULATION:\n'+JSON.stringify({ask:E.ask,indicative:E.indicative,low:E.low,high:E.high,confidence:E.confidence,evidence:E.evidence,lines:E.lines,unpriced:E.unpriced,risks:E.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,line:r.line})),unknown:E.unknown}),
+      '{"headline":string,"indicative":number,"low":number,"high":number,"confidence":"High|Medium|Low","lines":[{"label":string,"amount":number,"group":"content|rights|finance"}],"risks":[{"key":string,"sev":"HIGH|MEDIUM|LOW","line":string,"consequence":string}],"unknown":[string]}');
+    S.A=mergeAI(E,a); S.mode='live'; S.reason='';
+  }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); }
+  S.busy=false; if(S.A) S.A.pending=false;
+  if(S.route==='rate'||S.route==='breakdown'||S.route==='negotiate') render();
+}
+
+/* ============ view helpers ============ */
+const $ = s=>document.querySelector(s);
+function sevPill(s){ const c={HIGH:'high',MEDIUM:'med',LOW:'low'}[s]||'low'; return `<span class="sev ${c}">${s}</span>`; }
+function modeLabel(){
+  if(S.mode==='live') return `<span class="dot ok"></span>Live model analysis. Numbers are checked against CreVa's pricing rules.`;
+  if(S.mode==='fallback') return `<span class="dot amber"></span>Fallback engine, not the live model (${esc(S.reason)}). Same rules, keyword-based reading.`;
+  if(S.mode==='rule') return `<span class="dot"></span>Built-in rule, no model call.`;
+  return '';
+}
+function confBadge(c){ const cl={High:'ok',Medium:'acc',Low:'med'}[c]||'low'; return `<span class="sev ${cl}">${c}</span>`; }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.add('hide'),3200); }
+function pageHead(t,sub,right){ return `<div class="ph"><div><div class="eyebrow">${esc(NAMES[S.route]||'')}</div><h1>${t}</h1>${sub?`<p>${sub}</p>`:''}</div>${right||''}</div>`; }
+const NAMES={home:'Home',growth:'Growth',opps:'Opportunities',deals:'Deals',rate:'Rate Intelligence',breakdown:'Rate Intelligence',negotiate:'Rate Intelligence',contracts:'Contracts',payments:'Payments',checker:'Public rate checker',profile:'Profile'};
+const NAV=[['home','Home'],['growth','Growth'],['opps','Opportunities'],['deals','Deals'],['rate','Rate Intelligence'],['contracts','Contracts'],['payments','Payments']];
+const NAVMAP={breakdown:'rate',negotiate:'rate'};
+
+/* ============ views ============ */
+const V={};
+const IC={
+ home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+ growth:'<path d="M4 20V11M10 20V4M16 20v-7M22 20H2"/>',
+ opp:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0012 3z"/>',
+ deals:'<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/>',
+ rate:'<path d="M5 20v-7M10 20V6M15 20v-9M20 20V9"/>',
+ contract:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+ pay:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h3"/>',
+ crown:'<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5L3 8z"/>',
+ bell:'<path d="M6 16v-5a6 6 0 1112 0v5l2 2H4l2-2zM10 21h4"/>',
+ help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 114.6 1.3c-.7 1-2.1 1.4-2.1 3M12 17h.01"/>',
+ eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+ users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 010 5.7M18 14.5c1.9.8 3 2.6 3 5.5"/>',
+ user:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
+ bookmark:'<path d="M6 3h12v18l-6-4-6 4V3z"/>',
+ share:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/>',
+ target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>',
+ chat:'<path d="M4 5h16v11H9l-5 4V5z"/>',
+ wallet:'<path d="M4 7h14a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 7l12-3v3"/><circle cx="16" cy="13.5" r="1.2"/>',
+ rupee:'<path d="M7 5h10M7 9h10M7 5c5 0 7 1.5 7 4s-2 4-7 4l7 6"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ clip:'<path d="M20 11l-8.5 8.5a5 5 0 01-7-7L13 4a3.3 3.3 0 014.7 4.7L9.2 17.2a1.7 1.7 0 01-2.4-2.4L14.5 7"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ lock:'<rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+ globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+ mega:'<path d="M4 10v4h3l8 4V6L7 10H4zM18 9a4 4 0 010 6"/>',
+ image:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
+ refresh:'<path d="M20 11a8 8 0 00-14-4M4 5v3h3M4 13a8 8 0 0014 4M20 19v-3h-3"/>',
+ upload:'<path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>',
+ download:'<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
+ spark:'<path d="M12 3c.8 4.6 2.4 6.2 7 9-4.6 2.8-6.2 4.4-7 9-.8-4.6-2.4-6.2-7-9 4.6-2.8 6.2-4.4 7-9z"/>',
+ check:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+ alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+ chev:'<path d="M9 6l6 6-6 6"/>',
+ tag:'<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="8" cy="8.5" r="1.4"/>',
+ doc:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ layers:'<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/>',
+ heart:'<path d="M12 20s-8-5-8-11a4.5 4.5 0 018-2.7A4.5 4.5 0 0120 9c0 6-8 11-8 11z"/>',
+ wand:'<path d="M5 19L17 7M15 5l4 4M6 4v3M4.5 5.5h3M19 14v3M17.5 15.5h3"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
+ link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3A4 4 0 0011 18.7l1-1"/>'
+};
+const ic=(n,s)=>`<svg class="ic" width="${s||18}" height="${s||18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`;
+const ib=(n,c)=>`<span class="ib ${c||''}">${ic(n,22)}</span>`;
+const LOGO=`<svg width="38" height="38" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--l1)"/><stop offset="1" style="stop-color:var(--l2)"/></linearGradient></defs><path d="M12 1.5c.9 5.4 2.6 7.4 8.5 10.5-5.9 3.1-7.6 5.1-8.5 10.5-.9-5.4-2.6-7.4-8.5-10.5C9.4 8.9 11.1 6.9 12 1.5z" fill="url(#lg)"/></svg>`;
+function spark(pts){
+  const w=120,h=38,mx=Math.max(...pts),mn=Math.min(...pts);
+  const xy=pts.map((p,i)=>[i/(pts.length-1)*w,h-5-(p-mn)/(mx-mn||1)*(h-12)]);
+  const d=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const l=xy[xy.length-1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function bars(v){ const mx=Math.max(...v); return `<svg width="64" height="44" viewBox="0 0 64 44" aria-hidden="true">${v.map((x,i)=>`<rect x="${i*14}" y="${44-x/mx*40}" width="9" height="${x/mx*40}" rx="3" fill="var(--accent)" opacity="${.45+i*.16}"/>`).join('')}</svg>`; }
+
+V.home=()=>{
+  const gc=S.contracts.find(x=>x.id==='glow'), gn=cCounts(gc), gOpen=cRisks(gc).filter(r=>stOf(gc,r.key)==='open'), openAll=S.contracts.reduce((s,c)=>s+cCounts(c).open,0), withOpen=S.contracts.filter(c=>cCounts(c).open>0).length;
+  const G=analyze(GLOW_MSG,GLOW_CON), gross=G.lines.filter(l=>l.amount>0), tot=gross.reduce((s,l)=>s+l.amount,0);
+  const cols=['var(--d1)','var(--d2)','var(--d3)','var(--d4)','var(--d5)'];
+  const R=40,C=2*Math.PI*R; let off=0;
+  const segs=gross.map((l,i)=>{ const len=l.amount/tot*C; const s=`<circle cx="60" cy="60" r="${R}" fill="none" style="stroke:${cols[i%5]}" stroke-width="15" stroke-dasharray="${Math.max(0,len-2.5).toFixed(1)} ${C.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 60 60)"/>`; off+=len; return s; }).join('');
+  const below=Math.round((G.indicative-G.ask)/G.indicative*100);
+  const orow=(logo,bg,name,deliv,meta,amt,dot,dtxt,btn,cls,attrs)=>`<div class="orow" ${attrs} tabindex="0" role="button"><span class="logo ${logo.length>2?'tx':''}" style="background:${bg}">${logo}</span><div class="t"><b>${name} <span style="font-weight:500">– ${deliv}</span></b><span>${meta}</span></div><div class="r"><b class="num">${amt}</b><span class="st"><span class="dot ${dot}"></span>${dtxt}</span></div><button class="btn sm ${cls}" tabindex="-1">${btn} ${ic('chev',14)}</button></div>`;
+  const st=(l,v,d,icon,pts)=>`<div class="stat"><div class="ib">${ic(icon,22)}</div><div style="flex:1"><div class="lab">${l}</div><div class="mid num">${v}</div><div class="delta">${d}</div></div>${pts}</div>`;
+  const gm=(l,v,now,icon,pts)=>`<div class="mini"><div class="lab" style="text-transform:none;letter-spacing:0;font:500 12.5px var(--sans)">${l}</div><div class="top"><span class="ib">${ic(icon,18)}</span><div><b class="num">${v}</b><div class="delta" style="color:var(--muted)">${now}</div></div></div>${spark(pts)}</div>`;
+  return `
+<div class="ph"><div><h1>Welcome back, <em>${esc(firstName())}</em></h1><p>Know what you're worth. Know what you're signing. Grow what brands pay for.</p></div>
+  <div style="display:flex;gap:10px;align-items:center"><button class="round" data-a="checker" aria-label="Public rate checker">${ic('help',20)}</button><button class="btn p" data-a="go" data-r="rate">${ic('plus',16)} Analyze New Offer</button></div></div>
+<div class="cells c4">
+  ${st('Closed value this month','₹1.42L','+18% vs September','wallet',bars([4,6,5,9]))}
+  ${st('Active deals','3','GlowSkin, StudyKart, WellnessCo','doc','')}
+  ${st('Average deal value','₹52K','Across deals closed this month','rupee','')}
+  ${st('Open contract risks',String(openAll),withOpen?`In ${withOpen} contract${withOpen>1?'s':''}`:'All issues handled','alert','')}
+</div>
+${checklist()}
+<div class="home2">
+ <div class="col">
+  <div class="card pad"><div class="h3">Needs your attention <a data-a="go" data-r="opps">View all ${ic('arrow',15)}</a></div>
+    ${orow('GlowSkin','#FF8FA3','GlowSkin','1 Reel + 3 Stories','Beauty · Posted 2 days ago','₹30,000',gn.high?'high':(gn.open?'amber':'ok'),gn.open?gn.open+' contract risk'+(gn.open>1?'s':''):'All risks handled',gn.open?'Review':'View',gn.open?'p':'','data-a="open-contract" data-id="glow"')}
+    ${orow('F','#1B1118','FintechCo','1 LinkedIn post + 1 newsletter','Finance · Posted 4 days ago','₹45,000','amber','Counter-offer ready','Open','p','data-a="open-counter" data-id="fin"')}
+    ${orow('W','#3DB474','WellnessCo','2 Reels + 4 Stories','Wellness · Posted 9 days ago','₹22,000','amber','Payment 6 days late','Chase','','data-a="go" data-r="payments"')}
+  </div>
+  <div class="card pad"><div class="h3">Your rate growth <a data-a="go" data-r="growth">Open growth ${ic('arrow',15)}</a></div>
+    <div class="grid g4">
+     ${gm('Saves per 1K views','+31%','now 18','bookmark',[3,4,3.6,4.8,4.4,5.8,7])}
+     ${gm('Non-follower reach','+12 pts','now 67%','users',[4,4.4,4.2,5,5.6,6,6.8])}
+     ${gm('Shares per 1K views','+18%','now 9','share',[3,3.4,3.2,3.8,4.2,4.1,5])}
+     ${gm('Followers','+8%','now 54,000','user',[5,5.2,5.4,5.5,5.8,6,6.2])}
+    </div>
+    <p class="note acc" style="margin-top:14px">${ic('spark',18)}<span><b>Strongest signal: saves.</b> Saves and non-follower reach are currently stronger evidence for your next rate than follower growth.</span></p>
+  </div>
+ </div>
+ <div class="col">
+  <div class="card pad"><div class="h3">Deal value breakdown <span class="sev acc">GlowSkin</span></div>
+    <div class="donutw"><div class="donut"><svg viewBox="0 0 120 120">${segs}</svg><div class="c"><b class="num">₹${Math.round(G.indicative/1000)}K</b><span class="muted small">Indicative value</span></div></div>
+    <div class="leg">${gross.map((l,i)=>`<div><i style="background:${cols[i%5]}"></i><span>${esc(l.label.replace(/^Plus /,'').replace('Base content package','Base content'))}</span><span>${Math.round(l.amount/tot*100)}%</span></div>`).join('')}</div></div>
+    <div class="callout" data-a="go" data-r="breakdown" role="button" tabindex="0">${ic('spark',22)}<div style="flex:1"><div>This offer is <b>${below}% below</b> the indicative value.</div><div class="muted small">Fair range: ${INR(G.low)} to ${INR(G.high)}</div></div>${ic('arrow',18)}</div>
+  </div>
+  <div class="card pad"><div class="h3">Contract insights <a data-a="go" data-r="contracts">View all ${ic('arrow',15)}</a></div>
+    ${gOpen.slice(0,3).map(r=>`<div class="ins"><span class="ib sq">${ic(r.sev==='HIGH'?'alert':'doc',20)}</span><div class="t"><b>${esc(r.title)}</b><span>${esc(r.line)}</span></div><button class="btn sm ${r.sev==='HIGH'?'p':''}" data-a="open-contract" data-id="glow">Review</button></div>`).join('')||`<div class="note acc">${ic('check',18)}<span>All GlowSkin risks are handled.</span></div>`}
+  </div>
+ </div>
+</div>`;
+};
+
+V.opps=()=>{
+  const gc=S.contracts.find(x=>x.id==='glow'), gn=cCounts(gc);
+  const card=o=>`<div class="card opp"><div class="top"><span class="logo lg ${o.logo.length>2?'tx':''}" style="background:${o.bg}">${o.logo}</span>
+    <div class="t"><div class="nm"><h3>${o.brand}</h3><span class="sev ${o.sev}">${o.sevT}</span></div><div class="muted">${o.deliv}${o.plat?' · '+o.plat:''}</div>
+      <div class="meta">${ic('calendar',15)} ${o.when}</div>${o.file?`<div class="meta">${ic('clip',15)} Attached: <span class="mono">${o.file}</span></div>`:''}</div>
+    <div class="amt"><div class="big num" style="font-size:${o.amount.length>8?26:32}px">${o.amount}</div><div class="muted small">${o.sub}</div></div>
+    <button class="btn p" data-a="analyze-offer" data-id="${o.id}">Analyze Deal ${ic('arrow',16)}</button></div>
+    <div class="pre" data-a="analyze-offer" data-id="${o.id}" role="button" tabindex="0">${ic('doc',20)}<span><b>CreVa pre-assessment:</b> ${o.pre}</span>${ic('chev',16)}</div></div>`;
+  return `${pageHead('Brand Opportunities','Three offers are waiting. CreVa reads each one before you reply.',`<button class="btn p" data-a="add-opp">${ic('plus',16)} Add Opportunity</button>`)}
+  <div class="stack">
+  ${card({id:'glow',brand:'GlowSkin',logo:'GlowSkin',bg:'#FF8FA3',sev:gn.high?'high':(gn.open?'med':'ok'),sevT:gn.high?'High':(gn.open?'Medium':'Reviewed'),amount:'₹30,000',sub:'Estimated deal value',deliv:'1 Reel + 3 Stories',plat:'Instagram',when:'Arrived 2 days ago via Instagram DM',file:'glowskin_agreement.pdf',pre:gn.open?'High-value rights requested. Review before responding.':'All contract issues are handled. Ready to counter.'})}
+  ${card({id:'fin',brand:'FintechCo',logo:'F',bg:'#1B1118',sev:'ok',sevT:'Fair',amount:'₹45,000',sub:'Estimated deal value',deliv:'1 LinkedIn post + 1 newsletter mention',plat:'',when:'Arrived 4 days ago via email',file:'',pre:'Terms look reasonable for this scope. Minor counter opportunity on usage duration.'})}
+  ${card({id:'well',brand:'WellnessCo',logo:'W',bg:'#3DB474',sev:'med',sevT:'Barter',amount:'Barter',sub:'Product valued at ₹8,000',deliv:'2 Reels + 4 Stories',plat:'Instagram',when:'Arrived 9 days ago via Instagram DM',file:'',pre:'Barter value is below your production cost for this scope.'})}
+  </div>`;
+};
+
+const TERMIC={Deliverables:'doc','Usage scope':'globe','Paid media':'mega',Exclusivity:'lock',Revisions:'refresh','Raw assets':'image',Payment:'pay'};
+function termChips(A){ return `<div class="chips">${A.terms.map(c=>`<div class="chip ${c.f||''}"><span class="ib">${ic(TERMIC[c.k]||'doc',18)}</span><div><small>${c.k}</small><b>${esc(c.v)}</b></div></div>`).join('')}</div>`; }
+function skel(n){ return Array.from({length:n},(_,i)=>`<div class="skel" style="width:${90-i*12}%;margin:10px 0"></div>`).join(''); }
+
+V.rate=()=>{
+  const A=S.A, sp=S.special;
+  const pills=[['glow','GlowSkin'],['fin','FintechCo'],['well','WellnessCo'],['blank','Custom / Other']].map(p=>`<button class="pillb" data-a="load" data-id="${p[0]}" aria-pressed="${S.cur===p[0]}">${p[1]}</button>`).join('');
+  const inputs=`<div class="rate2"><div class="card pad stack">
+      <div><div class="lab">1. Select a brand</div><div style="display:flex;flex-wrap:wrap;gap:10px">${pills}</div>
+        <div class="fgrid" style="margin-top:14px"><div><label class="f" for="bn">Brand name</label><input type="text" id="bn" data-bind="brandName" value="${esc(S.brandName)}" placeholder="For example, GlowSkin"></div>
+        <div><label class="f" for="bs">Brand website</label><input type="text" id="bs" data-bind="site" data-nomic="1" inputmode="url" value="${esc(S.site)}" placeholder="https://brand.com"><div class="err" id="err_site"></div></div></div></div>
+      <div><label class="f" for="msg">2. Paste the brand's message</label><textarea id="msg" rows="6" data-bind="msg" maxlength="2000">${esc(S.msg)}</textarea><div class="cnt" id="mc">${S.msg.length}/2000</div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="analyze" ${S.busy?'disabled':''}>${S.busy?'Analyzing':'Analyze This Offer'} ${ic('arrow',16)}</button>
+        <details><summary>Final-check prompts</summary><div class="chips" style="margin-top:10px">${EVAL_PROMPTS.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="evalp" data-i="${i}">${esc(p)}</button>`).join('')}</div></details></div>
+      ${S.mode?`<div class="status" style="margin-top:0">${modeLabel()}</div>`:''}
+    </div>
+    <div class="card pad stack"><div><label class="f" for="con">3. Paste the contract, or upload it</label>
+      ${S.file?`<div class="filec">${ib('contract','sq')}<div style="flex:1;min-width:0"><b class="mono" style="font-size:12.5px;overflow-wrap:anywhere">${esc(S.file)}</b></div></div>`:''}
+      <textarea id="con" rows="7" data-bind="con" placeholder="Contract text. Optional." style="margin-top:10px">${esc(S.con)}</textarea></div>
+      <label class="drop" for="upl">${ic('upload',28)}<span><span style="color:var(--fg);font-weight:600">Click to upload a text file</span><br><small id="uplnote">TXT or MD. For a PDF, paste its text above.</small></span></label>
+      <input type="file" id="upl" class="hide" accept=".txt,.md,.pdf"></div></div>`;
+  let res='';
+  if(sp){
+    res=`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${sp.kind==='refuse'||sp.kind==='flop'?'acc':'low'}">${esc(sp.badge)}</span><span class="muted small">${esc(sp.conf)}</span></div>
+      <h3 style="font-size:21px;font-weight:700;text-wrap:balance">${esc(sp.title)}</h3>
+      ${sp.body.map(b=>`<p>${esc(b)}</p>`).join('')}
+      ${sp.actions.length?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.actions.map(a=>`<button class="btn p" data-a="special-go" data-r="${a[1]}">${a[0]}</button>`).join('')}</div>`:''}
+    </div></div>`;
+  } else if(A){
+    const pend=S.busy;
+    const rangeCell=A.rangeUnavailable?`<div class="mid" style="font-size:18px">Cannot range yet</div><div class="muted small" style="margin-top:6px">${esc(A.rangeUnavailable)}</div>`
+      : A.T.barter?`<div class="mid num">No cash fee</div><div class="muted small" style="margin-top:6px">Reference content value ${INR(A.indicative)}. Product valued at ${A.productValue?INR(A.productValue):'an unstated amount'}.</div>`
+      : `<div class="mid num" style="font-size:26px">${INR(A.low)} – ${INR(A.high)}</div><div class="muted small" style="margin-top:4px">Indicative value ${INR(A.indicative)}${A.ask!=null?` · their offer ${INR(A.ask)}`:''}</div>`;
+    const bl=(S.brandName||S.site)?`<p class="muted small" style="margin-bottom:10px">Brand: <b style="color:var(--fg)">${esc(brandOf())}</b>${S.site?` · <a href="${esc(S.site)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${esc(siteHost())}</a>`:''}</p>`:'';
+    res=`<div class="sec">${bl}<div class="h3" style="margin-bottom:4px">Result</div><p class="muted" style="margin-bottom:14px">Here's what CreVa found from your audience, similar deals and the contract terms.</p>
+    <div class="cells">
+      <div>${ib('tag')}<div><div class="lab">Fair value range</div>${pend?`<div class="skel" style="height:30px;width:140px"></div>`:rangeCell}</div></div>
+      <div>${ib('rate')}<div><div class="lab">Confidence</div>${pend?`<div class="skel" style="height:30px;width:100px"></div>`:`<div class="mid">${A.confidence}</div><div class="sevbar" style="margin-top:8px">${[1,2,3].map(i=>`<i class="${i<=rk[A.confidence]?'on':''}"></i>`).join('')}</div>`}</div></div>
+      <div>${ib('layers')}<div><div class="lab">Evidence</div>${pend?`<div class="skel" style="height:30px;width:120px"></div>`:`<div class="mid">Tier ${A.evidence.tier} <span class="muted" style="font-size:16px;font-weight:600">· ${A.evidence.count} deal${A.evidence.count===1?'':'s'}</span></div><div class="muted small" style="margin-top:4px">${esc(A.evidence.text)}</div>`}</div></div>
+    </div>
+    ${pend?`<p class="note" style="margin-top:12px">Live model is pricing the offer and ranking the risks. Terms below were read from your text already.</p>`:`<p style="margin-top:16px;font-size:17px;font-weight:600;max-width:72ch;text-wrap:balance">${esc(A.headline)}</p>`}
+    </div>
+    <div class="sec"><h2>What they're asking for</h2>${termChips(A)}${A.noted.length?`<p class="muted small" style="margin-top:8px">Also noted: ${esc(A.noted.join('; '))}.</p>`:''}</div>
+    <div class="sec"><h2>Key risks, ranked</h2>${pend?`<div class="card pad">${skel(4)}</div>`:
+      (A.risks.length?`<div class="card">${A.risks.map(r=>`<div class="rrow" data-a="go" data-r="contracts" role="button" tabindex="0">${sevPill(r.sev)}${stTag(r.key)}<div class="t"><b>${esc(r.title)}</b><span>${esc(r.line)}</span></div>${ic('arrow',18)}</div>`).join('')}</div>`:`<div class="card pad"><span class="sev ok">Clear</span> <span style="margin-left:8px">No material risks found in the text provided.</span></div>`)}</div>
+    <div class="sec"><h2>Unknown</h2><div class="card pad" style="border-color:var(--accent)"><p style="font-weight:600;margin-bottom:8px">What CreVa could not determine from what it was given</p>${pend?skel(2):`<ul style="margin:0;padding-left:18px;display:grid;gap:4px">${A.unknown.map(u=>`<li>${esc(u)}</li>`).join('')||'<li>Nothing material is missing from the text provided.</li>'}</ul>`}</div></div>
+    <div class="sec" style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="go" data-r="breakdown" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>See the breakdown</button><button class="btn" data-a="review-current" ${pend?'disabled':''}>Review contract</button><button class="btn" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>Build a counter</button></div>
+    <p class="muted small" style="margin-top:14px">CreVa gives estimates with evidence behind them. It does not accept, sign or send anything for you.</p>`;
+  } else {
+    res=`<div class="sec"><div class="note">${ic('spark',18)}<span>Results appear here. The GlowSkin offer is loaded; press Analyze This Offer to read it, or paste your own.</span></div></div>`;
+  }
+  return `${pageHead('Deal Intelligence','What this offer is worth, what it takes from you, and what CreVa does not know.')}${inputs}${res}`;
+};
+
+V.breakdown=()=>{
+  const A=S.A;
+  if(!A||A.rangeUnavailable||A.T.barter) return `${pageHead('Rate breakdown','')}<div class="note">Analyze a priced offer in Deal Intelligence first.</div><p style="margin-top:12px"><button class="btn p" data-a="go" data-r="rate">Open Deal Intelligence</button></p>`;
+  let cum=0; const rows=[]; const max=Math.max(A.ask||0, ...A.lines.map(l=>{ cum+=l.amount; return cum; }), A.indicative, A.high||0)*1.06; cum=0;
+  const pct=v=>Math.max(0,Math.min(100,v/max*100));
+  A.lines.forEach(l=>{ const a=cum, b=cum+l.amount; cum=b; const lo=Math.min(a,b); rows.push(`<div class="r"><div class="n">${esc(l.label)}${l.sub?`<div class="muted" style="font-size:11px">${esc(l.sub)}</div>`:''}</div><div class="trk"><div class="bar ${l.group}" style="left:${pct(lo)}%;width:${Math.max(0.8,pct(Math.abs(l.amount)))}%"></div></div><div class="v">${l.amount<0?'-':'+'}${INR(Math.abs(l.amount)).replace('-','')}</div></div>`); });
+  rows[0]=rows[0].replace(/>\+₹/,'>₹');
+  rows.push(`<div class="r" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><div class="n"><b>Indicative value</b></div><div class="trk"><div class="bar total" style="left:0;width:${pct(A.indicative)}%"></div></div><div class="v"><b>${INR(A.indicative)}</b></div></div>`);
+  rows.push(`<div class="r"><div class="n"><b>Recommended range</b></div><div class="trk"><div class="bar range" style="left:${pct(A.low)}%;width:${pct(A.high-A.low)}%"></div></div><div class="v">${INR(A.low)} to ${INR(A.high).replace('₹','')}</div></div>`);
+  const refP=A.ask!=null?pct(A.ask)/100:null;
+  const tot=A.content+A.rights||1;
+  const e=A.evidence;
+  const tier1=e.tier===1||(!A.P.isOther);
+  const askLine=A.ask==null?'':(A.ask<A.content?`They offered ${INR(A.ask)}. That is less than the content alone, with every right included.`:(A.ask<A.content+A.rights?`They offered ${INR(A.ask)}. That covers the content but leaves most of the rights unpaid.`:`They offered ${INR(A.ask)}, which covers content and the rights listed.`));
+  return `${pageHead('How CreVa got to '+INR(A.indicative),'Each bar adds one thing the brand is asking for. Content and rights are priced separately.')}
+  <div class="card pad">
+    <div class="legend" style="margin-bottom:${refP!=null?24:10}px"><span style="--c:var(--accent)">Content</span><span style="--c:var(--rights)">Rights</span><span style="--c:var(--muted)">Payment terms</span></div>
+    <div class="wf" ${refP!=null?`style="--p:${refP}"`:''}>
+      ${refP!=null?`<div class="refl">Their offer ${INR(A.ask)}</div><div class="ref"></div>`:''}
+      ${rows.join('')}
+    </div>
+    ${A.unpriced.length?`<p class="note warn" style="margin-top:12px">Not in this number: ${A.unpriced.map(u=>esc(u.label)+' (about '+INR(u.amount)+' if priced)').join(' and ')}. These are licence-level asks. CreVa recommends removing them or pricing a separate licence.</p>`:''}
+  </div>
+  <div class="sec"><h2>Content versus rights</h2><div class="card pad">
+    <div class="split"><i style="width:${A.content/tot*100}%;background:var(--accent)"></i><i style="width:${A.rights/tot*100}%;background:var(--rights)"></i></div>
+    <div class="grid g2"><div><div class="lab">Content</div><div class="big num" style="color:var(--accent)">${INR(A.content)}</div></div><div><div class="lab">Rights</div><div class="big num" style="color:var(--rights)">${INR(A.rights)}</div></div></div>
+    <p style="margin-top:12px;font-size:16px;font-weight:500;max-width:68ch">The content is worth ${INR(A.content)} of this and the rights are worth ${INR(A.rights)}. ${esc(askLine)}</p>
+  </div></div>
+  <div class="sec"><h2>Evidence behind the number</h2><div class="card"><div class="tw"><table>
+    <tr><td style="width:190px"><b>Tier 1, your deals</b></td><td>${tier1&&!A.P.isOther?'₹42K, ₹51K, ₹57K':'None given'}</td></tr>
+    <tr><td><b>Tier 2, network</b></td><td>${A.P.isOther?'None given':'12 comparable, median ₹54K'}</td></tr>
+    <tr><td><b>Tier 3, benchmark</b></td><td>Directional only</td></tr>
+    <tr><td><b>Confidence</b></td><td>${confBadge(A.confidence)}</td></tr>
+    <tr><td><b>Biggest unknown</b></td><td>${esc(A.unknown[0]||'None material')}</td></tr></table></div></div>
+    <p class="muted small" style="margin-top:8px">${S.mode==='live'?'Breakdown computed from the live analysis output.':'Breakdown computed by the fallback engine from the terms read in your text.'} Figures are estimates, not market facts.</p></div>
+  <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate">Build a counter</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
+};
+
+/* ---- contracts: list + detail ---- */
+const BRANDBG={GlowSkin:'#FF8FA3',FintechCo:'#1B1118',WellnessCo:'#3DB474',Ledgerly:'#3A2A6B',Northdesk:'#17405C'};
+function brandBg(n){ if(BRANDBG[n]) return BRANDBG[n]; const p=['#7A52C9','#C2527A','#2F8F83','#B8742A','#4A68B8']; let k=0; for(const ch of String(n)) k=(k*31+ch.charCodeAt(0))%p.length; return p[k]; }
+const brandInit=n=>String(n||'?').trim().slice(0,1).toUpperCase();
+S.contracts=[
+ {id:'glow',brand:'GlowSkin',file:'glowskin_agreement.pdf',text:GLOW_CON,msg:GLOW_MSG,status:'Needs review',added:'2 days ago'},
+ {id:'ledgerly',brand:'Ledgerly',file:'ledgerly_agreement.pdf',added:'Signed in Aug',status:'Signed',msg:'Ledgerly books 1 Reel and 2 Stories. Fee ₹57,000.',
+  text:'LEDGERLY CREATOR AGREEMENT\n\n3.1 Deliverables: 1 Reel and 2 Stories.\n5.1 Revisions: 1 round of revisions.\n7.1 Usage: 30 days organic usage on the brand\'s own channels.\n8.1 Exclusivity: none.\n9.2 Payment: net-30 from invoice.\n10.1 Cancellation: a kill fee of 50% applies if the brand cancels after production starts.\n10.2 Termination: either party may terminate with 14 days notice.\n11.1 Governing law: courts of Bengaluru. Late payment attracts interest of 1.5% per month.\n12.1 Disclosure: all posts carry the paid partnership label. Brand approval within 3 days.'},
+ {id:'northdesk',brand:'Northdesk',file:'northdesk_agreement.pdf',added:'Signed in Jul',status:'Signed',msg:'Northdesk books 1 LinkedIn post. Fee ₹51,000.',
+  text:'NORTHDESK CREATOR AGREEMENT\n\n3.1 Deliverables: 1 LinkedIn post.\n5.1 Revisions: up to two rounds of revisions.\n7.1 Usage: 90 days organic usage on the brand\'s own channels.\n8.1 Exclusivity: none.\n9.2 Payment: net-45 from invoice.'}
+];
+function upsertContract(){
+  if(!S.con||!S.con.trim()) return null;
+  const b=brandOf(), file=S.file||'Pasted contract';
+  let c=S.contracts.find(x=>x.brand.toLowerCase()===b.toLowerCase()&&x.file===file);
+  if(c){ c.text=S.con; c.msg=S.msg; }
+  else { c={id:'c'+Date.now(),brand:b,file,text:S.con,msg:S.msg,status:'Needs review',added:'Just now'}; S.contracts.unshift(c); }
+  S.cid=c.id; return c;
+}
+function openContract(id){
+  const c=S.contracts.find(x=>x.id===id); if(!c) return;
+  S.cid=id; S.brandName=c.brand; S.msg=c.msg||''; S.con=c.text; S.file=c.file; S.cur=OFFERS[id]?id:'blank';
+  S.A=analyze(S.msg,S.con); S.special=null; S.C=null; S.mode=''; S.draft=''; S.draftDirty=false; S.cMode='max'; setDraft();
+  S.route='contracts'; render(); ensureContract();
+}
+/* issue states: open | reviewed | cleared | dismissed (kept per contract, drives every screen that shows this brand) */
+const stOf=(c,k)=>(c.states&&c.states[k])||'open';
+function cRisks(c){ return analyze(c.msg||'',c.text).risks; }
+function cCounts(c){ const R=cRisks(c), o={open:0,reviewed:0,cleared:0,dismissed:0,high:0,total:R.length}; R.forEach(r=>{ const s=stOf(c,r.key); o[s]++; if(s==='open'&&r.sev==='HIGH') o.high++; }); return o; }
+function cStatus(c){ const n=cCounts(c); if(c.status==='Signed') return 'Signed'; if(!n.total) return 'Clear'; if(n.open>0) return (n.reviewed+n.cleared+n.dismissed)>0?'In review':'Needs review'; return n.reviewed>0?'Reviewed':'Cleared'; }
+const STCLS={Signed:'ok',Clear:'ok',Cleared:'ok',Reviewed:'acc','In review':'med','Needs review':'med',Reviewed2:'acc'};
+const ISL={reviewed:'Reviewed',cleared:'Cleared',dismissed:'Dismissed'};
+const ISC={reviewed:'acc',cleared:'ok',dismissed:'low'};
+const brandContract=()=>S.contracts.find(x=>x.brand.toLowerCase()===brandOf().toLowerCase()&&x.file===(S.file||'Pasted contract'));
+const riskLive=k=>{ const c=brandContract(); if(!c) return true; const s=stOf(c,k); return s==='open'||s==='reviewed'; };
+const stTag=k=>{ const c=brandContract(); if(!c) return ''; const s=stOf(c,k); return s==='open'?'':`<span class="sev ${ISC[s]}">${ISL[s]}</span>`; };
+function softRender(){ S._static=true; try{ render(false); } finally{ S._static=false; } }
+function setIssue(k,s){
+  const c=S.contracts.find(x=>x.id===S.cid); if(!c) return;
+  c.states=c.states||{}; if(c.states[k]===s||s==='open') delete c.states[k]; else c.states[k]=s;
+  if(S.A&&!S.draftDirty) setDraft();
+  softRender();
+  const n=cCounts(c); toast(n.open?`${n.open} left to review for ${c.brand}`:`All ${c.brand} issues are handled`);
+}
+V.contracts=()=>{
+  if(!S.cid||!S.contracts.find(x=>x.id===S.cid)||!S.A){
+    const rows=S.contracts.map(c=>{ const n=cCounts(c), stt=cStatus(c);
+      return `<div class="card opp"><div class="top"><span class="logo lg" style="background:${brandBg(c.brand)}">${esc(brandInit(c.brand))}</span>
+        <div class="t"><div class="nm"><h3>${esc(c.brand)}</h3><span class="sev ${STCLS[stt]||'low'}">${stt}</span></div>
+          <div class="meta">${ic('contract',15)} <span class="mono">${esc(c.file)}</span></div><div class="meta">${ic('calendar',15)} ${esc(c.added)}</div>
+          <div class="chips" style="margin-top:10px">${n.total?`${n.open?`<span class="sev ${n.high?'high':'med'}">${n.open} to review</span>`:''}${n.reviewed?`<span class="sev acc">${n.reviewed} reviewed</span>`:''}${n.cleared?`<span class="sev ok">${n.cleared} cleared</span>`:''}${n.dismissed?`<span class="sev low">${n.dismissed} dismissed</span>`:''}`:'<span class="sev ok">No issues found</span>'}</div></div>
+        <div class="amt"><div class="big num">${n.open}</div><div class="muted small">to review</div></div>
+        <button class="btn p" data-a="open-contract" data-id="${c.id}">${n.open?'Review':'Open'} ${ic('arrow',16)}</button></div></div>`; }).join('');
+    return `${pageHead('Contracts','Every agreement you have added, by brand. Open one to see its issues in plain language.',`<button class="btn p" data-a="add-contract">${ic('plus',16)} Add a contract</button>`)}
+    <div class="stack">${rows}</div>
+    <p class="muted small" style="margin-top:14px">Paste or upload a contract in Deal Intelligence and it is added here under the brand name you enter.</p>`;
+  }
+  const A=S.A, c=S.contracts.find(x=>x.id===S.cid);
+  const R=(S.C&&S.C.risks)||A.risks;
+  const miss=(S.C&&S.C.missing)||missingTerms(A.con);
+  const n=cCounts(c), stt=cStatus(c);
+  const act=(r,s,label,help)=>`<button type="button" class="iabtn ${stOf(c,r.key)===s?'on':''}" data-a="issue" data-k="${r.key}" data-s="${s}" aria-pressed="${stOf(c,r.key)===s}" title="${help}">${label}</button>`;
+  return `<div style="margin-bottom:14px"><button class="btn sm" data-a="contracts-list">${ic('chev',14)} All contracts</button></div>
+  <div class="card pad" style="border-color:var(--accent);margin-bottom:18px"><div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <span class="logo lg" style="background:${brandBg(c.brand)}">${esc(brandInit(c.brand))}</span>
+    <div style="flex:1 1 220px;min-width:0"><div class="lab" style="margin-bottom:2px">Contract with</div><h1 style="font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.1;overflow-wrap:anywhere;color:var(--accent)">${esc(c.brand)}</h1>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px"><span class="sev ${STCLS[stt]||'low'}">${stt}</span><span class="muted small mono">${esc(c.file)}${S.site&&S.brandName===c.brand?' · '+esc(siteHost()):''}</span></div></div>
+    <div style="text-align:right"><div class="big num">${n.open}</div><div class="muted small">of ${n.total} to review</div></div></div>
+    ${n.total?`<div class="chips" style="margin-top:14px">${n.reviewed?`<span class="sev acc">${n.reviewed} reviewed</span>`:''}${n.cleared?`<span class="sev ok">${n.cleared} cleared</span>`:''}${n.dismissed?`<span class="sev low">${n.dismissed} dismissed</span>`:''}${n.open>0?`<button class="btn sm" data-a="issues-all" style="margin-left:auto">Mark all reviewed</button>`:''}</div>`:''}</div>
+  <p class="note acc" style="margin-bottom:14px">${ic('shield',18)}<span><b>CreVa explains commercial consequences, not legal validity.</b></span></p>
+  ${S.cbusy?`<p class="note" style="margin-bottom:14px">Live model is rewriting the readings in plain language. The issues below are already read from your text.</p>`:''}
+  <div class="card">${R.map(r=>{ const s=stOf(c,r.key); return `<div class="issue ${s!=='open'?'handled':''}"><div class="hd">${sevPill(r.sev)}<h3>${esc(r.title)}</h3><span class="mono muted small">${esc(r.clause)}</span>${s!=='open'?`<span class="sev ${ISC[s]}" style="margin-left:auto">${ISL[s]}</span>`:''}</div>
+    ${r.quote?`<div class="quote">"${esc(r.quote)}"</div>`:''}
+    <dl class="kv" style="margin:0"><dt>Plain reading</dt><dd>${esc(r.reading)}</dd><dt>For you</dt><dd>${esc(r.consequence)}</dd><dt>Suggested ask</dt><dd>${esc(r.suggestion)}</dd></dl>
+    <div class="iact"><span class="muted small">Your call</span>${act(r,'reviewed','Mark reviewed','You have read it and still want to raise it.')}${act(r,'cleared','Clear','The brand fixed or removed it.')}${act(r,'dismissed','Dismiss','Not a concern for you. CreVa stops arguing it in your counter.')}${s!=='open'?`<button type="button" class="iabtn" data-a="issue" data-k="${r.key}" data-s="open">Reopen</button>`:''}</div>
+    <div class="muted small">${s==='dismissed'?'Dismissed: left out of your counter draft.':(s==='cleared'?'Cleared: left out of your counter draft.':'Reviewed keeps it in your counter draft. Clear means the brand fixed it. Dismiss means it is not a concern for you.')}</div></div>`; }).join('')||`<div class="pad"><span class="sev ok">Clear</span> <span style="margin-left:8px">No issues found in the text provided.</span></div>`}</div>
+  ${A.noted.length?`<p class="muted small" style="margin-top:8px">Also noted, not ranked: ${esc(A.noted.join('; '))}.</p>`:''}
+  <div class="sec"><h2>What's missing</h2><div class="card">${miss.length?`<div class="tw"><table>${miss.map(m=>`<tr><td style="width:230px"><b>${esc(m.term)}</b></td><td>${esc(m.why)}</td></tr>`).join('')}</table></div>`:'<div class="pad">Nothing standard is absent.</div>'}</div><p class="muted small" style="margin-top:8px">Absent terms count as findings. A contract that is silent leaves the point open to dispute.</p></div>
+  ${A.escalate?`<div class="note warn" style="margin-top:20px">${ic('alert',18)}<span><b>I cannot determine the legal effect of this clause. Consider professional legal review before signing.</b> Deal value, the licence terms or an assignment of rights make this worth a lawyer's time.</span></div>`:''}
+  <div class="status">${S.cMode==='live'?'<span class="dot ok"></span>Plain-language readings written by the live model.':(S.cMode==='fallback'?'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+'). Readings are from built-in templates.':'')}</div>
+  <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||!A.counter.max?'disabled':''}>Build a counter from these</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
+};
+
+/* negotiate */
+function joinList(a){ return a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:(a[0]||''); }
+function drivers(A){ const T=A.T, d=[];
+  if(T.perp){ if(riskLive('perpetual')) d.push(T.paid?'perpetual paid usage':'perpetual usage'); } else if(T.paid){ if(riskLive('paidmedia')) d.push('paid media rights'); }
+  if(T.exclMonths>0&&riskLive('exclusivity')) d.push(Math.round(T.exclMonths*10)/10+' months of category exclusivity');
+  if(T.revisions>=3&&riskLive('revisions')) d.push(sp(T.revisions)+' revision rounds');
+  if(T.raw) d.push('raw footage handover');
+  if(T.payDays>=60&&riskLive('payment')) d.push('net-'+T.payDays+' payment');
+  return d; }
+const DISC='All posts will carry the paid partnership label.';
+function draftFor(mode, A, brand){
+  const c=A.counter, ask=A.ask||0, dl=A.delivWords, dr=drivers(A);
+  const drv=dr.length?joinList(dr):'the usage and terms as written';
+  const raw=A.T.raw?', no raw footage':'';
+  if(mode==='max') return `Thanks for sharing the brief, and I'd love to work on this. For ${dl} my rate for the package as written is ${INR(c.max)}, which reflects ${drv} alongside the content itself. ${ask?`If the budget needs to stay closer to ${INR(ask)}, I can make that work with organic usage for thirty days, exclusivity limited to thirty days, and one round of revisions${raw}. `:''}Happy to go either way, let me know which suits.\n\n${DISC}`;
+  if(mode==='rel') return `Thank you for thinking of me for this, I'm glad to be part of the launch. For ${dl} I'd suggest ${INR(c.rel)}. At that figure I can include ninety days of organic usage, two rounds of revisions and payment on net-45.${dr.length?` The ${joinList(dr.filter(x=>!/net-/.test(x)))||'wider rights'} would need to come out of this package or be quoted separately, since they sit outside a standard content fee.`:''} I'd like us to work together beyond one campaign, so I'm open to talking through what matters most to you.\n\n${DISC}`;
+  return `Thanks again for the offer. I'm happy to keep to your budget of ${INR(c.pres)} for ${dl}. At that figure the package is organic usage only, thirty days of exclusivity, one round of revisions${raw} and payment on net-30. If you'd like wider usage, longer exclusivity or more revisions, I can quote those separately and we can add them as you need them.\n\n${DISC}`;
+}
+const MODES={max:{n:'Maximize value',sub:(A)=>`Rights preserved. Offers a reduced-scope path at their budget.`,trade:'Holds price. Trades nothing on rights unless they cut the budget, then 30-day organic usage, 1 revision, net-30.'},
+  rel:{n:'Protect relationship',sub:()=>`Warmer language. 90-day usage, 2 revisions, net-45.`,trade:'Gives on price and terms to keep the door open; wider rights are quoted separately.'},
+  pres:{n:'Preserve budget',sub:()=>`Keeps their number and shrinks what they get. Organic usage only, 30-day exclusivity, 1 revision, no raw footage.`,trade:'Does not move the brand\'s budget. Moves what the budget buys.'}};
+
+V.negotiate=()=>{
+  const A=S.A;
+  if(A&&A.T.barter) return `${pageHead('Negotiate','')}<div class="note">This is a barter offer, so there is no cash fee to counter. Ask for a cash fee in your reply, and treat the product as a bonus.</div><p style="margin-top:12px"><button class="btn p" data-a="go" data-r="rate">Back to deal intelligence</button></p>`;
+  if(!A||A.rangeUnavailable||!A.counter||!A.counter.max) return `${pageHead('Negotiate','')}<div class="note">Analyze a priced offer in Deal Intelligence first.</div><p style="margin-top:12px"><button class="btn p" data-a="go" data-r="rate">Open Deal Intelligence</button></p>`;
+  const brand=brandOf();
+  const price={max:A.counter.max,rel:A.counter.rel,pres:A.counter.pres};
+  const hasDisc=/paid partnership/i.test(S.draft);
+  return `${pageHead('Negotiate','Pick an approach. CreVa writes a draft that names the terms behind the number. You edit it and you send it.')}
+  <div class="modes">${['max','rel','pres'].map(k=>`<button class="mode" data-a="mode" data-m="${k}" aria-pressed="${S.cMode===k}"><b>${MODES[k].n}</b><span class="pr num">${INR(price[k])}</span><span class="d">${MODES[k].sub(A)}</span></button>`).join('')}</div>
+  <p class="muted small" style="margin-top:8px">${esc(MODES[S.cMode].trade)}${S.cMode==='pres'?' A creator who cannot move the brand\'s budget can still move what the budget buys.':''}</p>
+  <div class="sec"><h2>Draft to ${esc(brand)}, editable</h2>
+    <textarea id="draft" rows="11" data-bind="draft" aria-label="Draft message">${esc(S.draft)}</textarea>
+    ${S.nbusy?`<div class="status"><span class="dot amber"></span>Live model is refining the draft. Your edits are never overwritten.</div>`:''}
+    <div class="status">${confBadge(A.confidence)}<span>Confidence ${A.confidence.toUpperCase()}, based on ${A.evidence.count} comparable deals.</span></div>
+    ${hasDisc?'':`<p class="note warn" style="margin-top:10px">This draft does not mention the paid partnership label. Add it before you send.</p>`}
+  </div>
+  <div class="sec"><div class="card pad stack"><div class="note acc"><b>CreVa will not send this. You send it.</b> There is no send button in CreVa. Copy the draft and send it from your own account.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="copy-draft">Approve and copy</button></div></div></div>
+  <div class="sec"><h2>Ask CreVa to change the draft</h2><div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" id="instr" data-bind="instr" placeholder="For example: make it shorter, or warmer" style="flex:1 1 240px" value="${esc(S.instr)}"><button class="btn" data-a="refine">Rewrite</button></div>
+    ${S.refused?`<div class="note acc" style="margin-top:10px"><b>CreVa will not accept, sign or send for you.</b> I can draft a reply for you to send yourself. Use the draft above, edit it, then press Approve and copy.</div>`:''}</div>`;
+};
+function setDraft(){ const A=S.A; if(!A||!A.counter||!A.counter.max)return; const brand=brandOf(); S.draft=draftFor(S.cMode,A,brand); S.draftDirty=false; }
+async function aiDraft(extra){
+  const A=S.A; if(!A) return; S.nbusy=true; render();
+  const mode=S.cMode, price={max:A.counter.max,rel:A.counter.rel,pres:A.counter.pres}[mode], base=draftFor(mode,A,'');
+  try{
+    const r=await ai('Write the negotiation draft for the creator to send herself. Mode: '+MODES[mode].n+'. Price: '+INR(price)+'. Keep every numeric term from the starting draft. Name the terms that drive the number. Include the paid partnership disclosure line. Never write that anything has been sent or accepted. '+(extra?'Creator instruction: '+extra+'.':''),
+      'STARTING DRAFT:\n'+(extra&&S.draft?S.draft:base)+'\n\nTERMS:\n'+JSON.stringify(A.terms),'{"draft":string}');
+    let d=typeof r.draft==='string'?r.draft.trim():'';
+    if(d.length<80||d.length>1800||!d.includes(INR(price).replace('₹','').replace(/^/,'')) && !d.includes(INR(price))) throw new Error('shape');
+    if(!/paid partnership/i.test(d)) d+='\n\n'+DISC;
+    if(!S.draftDirty || extra){ if(mode===S.cMode){ S.draft=d; S.draftDirty=!!extra; } }
+    S.nmode='live';
+  }catch(err){ S.nmode='fallback'; if(extra) toast('Live model unavailable, so the draft was not rewritten. Edit it by hand.'); }
+  S.nbusy=false; if(S.route==='negotiate') render();
+}
+
+V.deals=()=>{
+  const act=[['glow','GlowSkin','#FF8FA3','High','high','₹58,000','1 Reel + 3 Stories','In progress','Reel due 18 Oct',45],['study','StudyKart','#1B1118','Fair','ok','₹40,000','1 Reel + 1 Post','In progress','Reel due 24 Oct',40],['well','WellnessCo','#3DB474','Barter','med','₹22,000','2 Reels + 4 Stories','Awaiting payment','6 days late',85]];
+  const done=[['d1','Ledgerly','#2A1B4D','Paid','ok','₹57,000','1 Reel + 2 Stories','Paid','Closed Aug',100],['d2','Northdesk','#14324A','Paid','ok','₹51,000','1 LinkedIn post','Paid','Closed Jul',100],['d3','Calmbase','#3C2A17','Paid','ok','₹42,000','1 Reel','Paid','Closed Jun',100]];
+  const list=S.dealTab==='active'?act:done;
+  const cards=list.map(d=>`<button class="dcard" data-a="deal" data-id="${d[0]}" aria-pressed="${S.dealId===d[0]}"><div class="tp"><span class="logo" style="background:${d[2]}">${d[1][0]}</span><div><b>${d[1]}</b> <span class="sev ${d[4]}">${d[3]}</span><div class="muted small">${d[6]}</div></div><b class="num" style="font-size:17px">${d[5]}</b></div><div class="small"><span style="color:var(--accent)">${d[7]}</span> <span class="muted">· ${d[8]}</span></div><div class="prog"><i style="width:${d[9]}%"></i></div></button>`).join('');
+  return `${pageHead('Deals','Everything you have committed to, in one place.')}
+  <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="${S.dealTab==='active'}" data-a="dtab" data-t="active">Active</button><button class="tab" role="tab" aria-selected="${S.dealTab==='done'}" data-a="dtab" data-t="done">Completed</button></div>
+  <div class="dcards">${cards}</div>
+  ${S.dealId==='glow'&&S.dealTab==='active'?dealDetail():(S.dealId==='well'?`<div class="card pad" style="margin-top:16px"><b>WellnessCo · ₹22,000</b><p class="muted" style="margin:6px 0 12px">Delivered. Payment is 6 days late.</p><button class="btn p" data-a="go" data-r="payments">Open payments</button></div>`:`<div class="note" style="margin-top:16px">${ic('doc',18)}<span>Select GlowSkin in Active to see a full deal workspace.</span></div>`)}`;
+};
+function dealDetail(){
+  const tg=(t,c)=>`<span class="sev ${c}">${t}</span>`;
+  const rq=(icon,name,tag)=>`<tr><td><div class="tc">${ic(icon,20)}<span>${name}</span></div></td><td>${tag}</td></tr>`;
+  const kv=(icon,k,v)=>`<div class="kvr">${ic(icon,18)}<span>${k}</span><span>${v}</span></div>`;
+  return `<div class="deal2"><div class="card pad"><div class="h3"><span>GlowSkin <span class="muted" style="font-weight:500">· Deal workspace</span></span></div>
+    <div class="ladder"><div><div class="lab">Opening offer</div><div class="mid num">₹30,000</div></div><div><div class="lab">Your counter</div><div class="mid num">₹68,000</div></div><div><div class="lab">Closed at</div><div class="mid num">₹58,000</div><div class="delta">+₹28,000 vs opening offer (+93%)</div></div></div>
+    <p class="muted small" style="margin:10px 0 6px">CreVa priced the package at ₹62,000 to ₹70,000, you countered at ₹68,000 and closed at ₹58,000 with the rights cut back.</p>
+    <div class="tw"><table><tr><th>Requirement</th><th>Status</th></tr>
+      ${rq('contract','Contract',tg('Signed, 2 Oct','ok'))}${rq('image','Reel',tg('Due 18 Oct','low'))}${rq('image','Stories',tg('Due 20 Oct','low'))}${rq('growth','Proof report',tg('Pending','med'))}${rq('doc','Invoice',tg('Sent 21 Oct','ok'))}${rq('pay','Payment',tg('Due 20 Nov','low'))}</table></div></div>
+    <div class="col"><div class="card pad"><div class="h3">Agreed terms</div>${kv('globe','Usage','30-day organic')}${kv('shield','Exclusivity','None')}${kv('refresh','Revisions','1 round')}${kv('pay','Payment terms','Net-30')}</div>
+    <div class="card pad"><div class="h3">Documents</div>
+      ${[['glowskin_agreement.pdf','Added 2 days ago'],['creative_guidelines.pdf','Added 3 days ago'],['brand_assets.zip','Added 3 days ago']].map(d=>`<div class="kvr">${ic('doc',18)}<span style="font-weight:500;overflow-wrap:anywhere">${d[0]}<br><small class="muted">${d[1]}</small></span><span></span></div>`).join('')}
+      <button class="btn p" style="width:100%;margin-top:6px" data-a="go" data-r="payments">Open Payments ${ic('arrow',16)}</button></div></div></div>`;
+}
+
+V.payments=()=>{
+  const st=(icon,l,v,small)=>`<div>${ib(icon)}<div><div class="lab">${l}</div><div class="mid ${small?'':'num'}" ${small?'style="font-size:18px;color:var(--accent)"':''}>${v}</div></div></div>`;
+  return `${pageHead('Payments','What you are owed and when.')}
+  <div class="cells">${st('wallet','Expected','₹58,000')}${st('doc','Invoiced','₹58,000')}${st('download','Received','₹0')}</div>
+  <div class="cells" style="margin-top:16px">${st('calendar','Due in','14 days')}${st('clock','Status','Awaiting payment',1)}${st('deals','Deal','GlowSkin')}</div>
+  <div class="sec"><h2>Overdue</h2><div class="card pad"><div class="orow" style="cursor:default;margin:0"><span class="dot amber"></span><div class="t"><b>WellnessCo <span class="num">₹22,000</span></b><span>6 days late</span></div><button class="btn sm p" data-a="chase">Chase</button></div></div>
+  ${S.chase?`<div class="card pad stack" style="margin-top:14px"><div class="lab">Reminder draft, editable</div><textarea id="chased" rows="6" data-bind="chaseDraft">${esc(S.chaseDraft)}</textarea><div class="note acc"><span><b>CreVa will not send this. You send it.</b></span></div><div><button class="btn p" data-a="copy-chase">Approve and copy</button></div></div>`:''}</div>`;
+};
+
+/* growth */
+const PERF=[['Followers','54,000','+8%','Moderate','low'],['Non-follower reach','67%','+12 pts','Strong','ok'],['Saves per 1K views','18','+31%','Strong','ok'],['Shares per 1K views','9','+18%','Strong','ok'],['Story completion','64%','+7 pts','Medium','acc'],['Comment depth','High','+11%','Medium to strong','acc']];
+V.growth=()=>{
+  const tabs=`<div class="tabs" role="tablist">${[['perf','Performance'],['rate','Rate growth'],['autopsy','Post autopsy']].map(t=>`<button class="tab" role="tab" aria-selected="${S.tab===t[0]}" data-a="gtab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>`;
+  let body='';
+  if(S.tab==='perf') body=`<div class="card"><div class="tw"><table><tr><th>Metric</th><th>Current</th><th>Change</th><th>Commercial reading</th></tr>${PERF.map((r,i)=>`<tr><td><div class="tc">${ib(['users','eye','bookmark','share','target','chat'][i],'sq')}<b>${r[0]}</b></div></td><td class="num">${r[1]}</td><td class="num delta">${r[2]}</td><td><span class="sev ${r[4]==='ok'?'solid':r[4]}">${r[3]}</span></td></tr>`).join('')}</table></div></div><p class="note" style="margin-top:12px">${ic('alert',18)}<span>The first three columns are available free in the app. The last column is what a brand is likely to pay attention to.</span></p>`;
+  if(S.tab==='rate') body=`<div class="card pad stack">
+    <div class="grid g3"><div><div class="lab">Current estimated Reel rate</div><div class="mid num">₹38,000</div></div><div><div class="lab">Reachable, comparable creators</div><div class="mid num">₹46,000 to ₹52,000</div></div><div><div class="lab">Largest gap: non-follower reach</div><div class="mid num">67% <span class="muted" style="font-size:16px">vs 78%</span></div></div></div>
+    <p style="max-width:70ch">Your current estimated rate for a Reel is ₹38,000. Based on comparable creators in your band, ₹46,000 to ₹52,000 is reachable. Your largest gap is non-follower reach: yours is 67%, comparable creators closing at that rate are at 78%. Across your last five sponsored posts, those above 70% non-follower reach drew 1.6 times your median inbound interest.</p>
+    <div class="note acc">These are signals associated with stronger pricing across a cohort. They are not a lever: CreVa cannot say that raising one of them will raise your rate.</div></div>
+    <div class="sec"><h2>Experiment for your next three posts</h2><div class="card pad stack"><p>Make each of the next three Reels open with a problem a non-follower would recognise, and end with something worth saving (a checklist, a script, a template). Keep your posting time and length close to your usual.</p><p>Record non-follower reach and saves per 1K views after seven days for each. Your baseline is 67% and 18.</p><p class="muted">Three posts is too few to prove anything. Treat the result as one more data point, not an answer.</p></div></div>`;
+  if(S.tab==='autopsy') body=autopsyView();
+  return `${pageHead('Growth','Your numbers, read the way a brand reads them.')}${tabs}${body}`;
+};
+function autopsyView(){
+  const p=POSTS.find(x=>x.id===S.post), R=S.auto[p.id];
+  const f=v=>(v>0?'+':(v<0?'-':''))+Math.abs(v)+'%';
+  const rows=[['Reach',p.m.reach],['First 3s retention',p.m.ret3],['Saves per 1K',p.m.saves],['Shares per 1K',p.m.shares]];
+  return `<div class="card pad stack"><div><label class="f" for="postsel">Post</label><select id="postsel" data-a-change="post">${POSTS.map(x=>`<option value="${x.id}" ${x.id===S.post?'selected':''}>${x.date} · ${x.title}</option>`).join('')}</select></div>
+   <div class="tw"><table><tr><th>Metric</th><th>Versus your median</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td class="num ${r[1]<=-20?'':'muted'}" style="${r[1]<=-20?'color:var(--high);font-weight:500':''}">${f(r[1])}</td></tr>`).join('')}<tr><td>Posting time</td><td>${p.win}</td></tr></table></div>
+   <div><button class="btn p" data-a="autopsy" ${S.abusy?'disabled':''}>${S.abusy?'Reading the data':'Why did this one flop?'}</button></div></div>
+   ${R?`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
+     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${R.conf==='INSUFFICIENT EVIDENCE'?'acc':'med'}">Confidence: ${esc(R.conf)}</span></div>
+     <p style="font-size:17px;max-width:68ch;text-wrap:pretty">${esc(R.answer)}</p>
+     <div class="grid g2"><div><div class="lab">Observed</div><ul style="margin:0;padding-left:18px">${R.observed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab">${R.hyp.length?'Hypothesis, not a finding':'Not established'}</div><ul style="margin:0;padding-left:18px">${(R.hyp.length?R.hyp:['Distribution cause versus content cause. The available data does not separate them.']).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
+     <div class="status">${R.mode==='live'?'<span class="dot ok"></span>Live model answer, checked against the data rules.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div></div></div>`:''}`;
+}
+function autopsyRule(p){
+  const m=p.m;
+  if(m.ret3<=-20) return {conf:'LOW',answer:`First-3-second retention is ${Math.abs(m.ret3)}% below your median, which is consistent with weaker early retention. I can't establish that it caused the lower reach. Reach is down ${Math.abs(m.reach)}%, and retention is only one of several things that move it.`,observed:[`Reach ${m.reach}% versus median`,`First 3s retention ${m.ret3}%`,`Saves per 1K ${m.saves}%, shares per 1K ${m.shares}%`,'Posted in your normal window'],hyp:['Weaker early retention may have reduced how widely the Reel was shown. Consistent with the data, not proven.'],kind:'hyp'};
+  return {conf:'INSUFFICIENT EVIDENCE',answer:`I don't have enough evidence to identify why this post underperformed. Reach is well below your median, but retention, saves, shares and posting time are all within your normal range. I can't distinguish a distribution cause from a content cause with the data available.`,observed:[`Reach ${m.reach}% versus median`,`First 3s retention ${m.ret3}%, within normal range`,`Saves per 1K ${m.saves}%, shares per 1K ${m.shares}%, within normal range`,'Posted in your normal window'],hyp:[],kind:'ins'};
+}
+
+V.checker=()=>{
+  const c=S.chk, o=S.chkOut;
+  const D=c.platform==='LinkedIn'?[['li1','1 LinkedIn post'],['li2','2 LinkedIn posts'],['linl','1 LinkedIn post + 1 newsletter mention']]:[['reel','1 Reel'],['reel3','1 Reel + 3 Stories'],['st3','3 Stories']];
+  const form=`<div class="card pad stack"><div class="fgrid">
+   <div><label class="f" for="c_pl">Platform</label><select id="c_pl" data-ck="platform">${['Instagram','LinkedIn'].map(x=>`<option ${c.platform===x?'selected':''}>${x}</option>`).join('')}</select></div>
+   <div><label class="f" for="c_fo">Follower count</label><input type="number" id="c_fo" data-ck="followers" value="${esc(c.followers)}" placeholder="54000" min="0"></div>
+   <div><label class="f" for="c_ni">Niche</label><select id="c_ni" data-ck="niche">${['Career and productivity','Finance','Beauty and skincare','Fitness and wellness','Tech','Food','Travel','Other'].map(x=>`<option ${c.niche===x?'selected':''}>${x}</option>`).join('')}</select></div>
+   <div><label class="f" for="c_en">Engagement rate, % (optional)</label><input type="number" id="c_en" data-ck="eng" value="${esc(c.eng)}" placeholder="3.2" step="0.1" min="0"></div>
+   <div><label class="f" for="c_de">Deliverables</label><select id="c_de" data-ck="deliver">${D.map(x=>`<option value="${x[0]}" ${c.deliver===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select></div>
+   <div><label class="f" for="c_us">Usage requested</label><select id="c_us" data-ck="usage">${[['org30','Organic, 30 days'],['org90','Organic, 90 days'],['paid','Paid media'],['perp','Perpetual']].map(x=>`<option value="${x[0]}" ${c.usage===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select></div>
+   <div><label class="f" for="c_ex">Exclusivity requested</label><select id="c_ex" data-ck="excl">${[['none','None'],['m1','1 month'],['m3','3 months'],['m6','6 months']].map(x=>`<option value="${x[0]}" ${c.excl===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select></div>
+   <div><label class="f" for="c_la">Last paid for something comparable, ₹ (optional)</label><input type="number" id="c_la" data-ck="last" value="${esc(c.last)}" placeholder="45000" min="0"></div></div>
+   <div><button class="btn p" data-a="check" ${S.chkBusy?'disabled':''}>${S.chkBusy?'Checking':'Check my rate'}</button></div></div>`;
+  let out='';
+  if(o){
+    out=`<div class="sec"><h2>Your result</h2>
+    <div class="share" id="sharecard">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:17px">CreVa</b><span class="eyebrow">Rate check</span></div>
+      <div class="muted small" style="margin-top:14px">${esc(c.platform)} · ${esc(o.deliv)}</div>
+      <div class="lab" style="margin-top:10px">Indicative range</div>
+      <div class="rng num">${INR(o.low)} to ${INR(o.high).replace('₹','₹')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px">${confBadge(o.conf)}<span class="muted small">${esc(o.tier)}</span></div>
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">${o.drivers.map(d=>`<div style="display:flex;justify-content:space-between;gap:12px"><span>${esc(d[0])}</span><span class="mono">${INR(d[1])}</span></div>`).join('')}</div>
+      ${o.perpNote?`<p class="small" style="margin-top:10px;color:var(--amber)">${esc(o.perpNote)}</p>`:''}
+      <p class="muted small" style="margin-top:12px">Directional. Built from CreVa's reference model, not a market average. Follower count alone does not set a price.</p>
+    </div>
+    <div class="status" style="margin-top:10px">${S.chkMode==='live'?'<span class="dot ok"></span>Narrowing advice written by the live model.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div>
+    <div style="margin-top:10px"><button class="btn sm" data-a="copy-check">Copy as text</button></div></div>
+    <div class="sec"><h2>What would narrow this range</h2><div class="card pad"><ul style="margin:0;padding-left:18px;display:grid;gap:6px">${(o.narrowAI||o.narrow).map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div></div>
+    <div class="sec"><div class="card pad" style="border-color:var(--accent);display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between"><b style="font-size:16px">Paste the actual offer to see whether it's fairly priced</b><button class="btn p" data-a="exit-checker">Open Deal Intelligence</button></div></div>`;
+  }
+  return `<div class="ph"><div><div class="eyebrow">Free, no signup</div><h1>What is this deal worth?</h1><p>Answer a few questions and get an indicative range. CreVa shows how sure it is and what would make it surer.</p></div></div>${form}${out}`;
+};
+
+/* ============ shell and render ============ */
+function renderNav(){
+  const act=NAVMAP[S.route]||S.route, icn={home:'home',growth:'growth',opps:'opp',deals:'deals',rate:'rate',contracts:'contract',payments:'pay'};
+  $('#side').innerHTML=`<div class="brand">${LOGO}<div><b>CreVa</b><span>Deal intelligence</span></div></div>`+
+    NAV.map(n=>`<button class="nav ${spotNav()===n[0]?'spot':''}" data-a="go" data-r="${n[0]}" ${act===n[0]?'aria-current="page"':''}>${ic(icn[n[0]],22)}<span>${n[1]}</span>${act===n[0]?`<span class="go">${ic('chev',16)}</span>`:''}</button>`).join('')+
+    `<div class="sp"></div><button class="promo ${spotNav()==='promo'?'spot':''}" data-a="checker"><b>${ic('crown',22)}<span>Public rate checker</span><span class="go">${ic('chev',16)}</span></b><small>Know what you're worth. Know what you're signing. Grow what brands pay for.</small></button>`;
+}
+
+function render(scroll){
+  stopDict();
+  const pub=S.route==='checker';
+  $('#app').style.gridTemplateColumns=pub?'minmax(0,1fr)':'';
+  $('#side').style.display=pub?'none':'';
+  document.querySelector('.burger').style.display=pub?'none':'';
+  $('#crumb').textContent='';
+  if(pub){ $('#crumb').innerHTML='<a href="#" data-a="exit-checker" style="color:inherit">Back to CreVa</a>'; }
+  renderNav();
+  $('#main').classList.toggle('static',!!S._static);
+  $('#main').innerHTML=(V[S.route]||V.home)();
+  if(scroll!==false) window.scrollTo(0,0);
+  $('#side').classList.remove('open'); $('#scrim').classList.remove('open');
+  if(S.tour==null){
+    if(S.route==='rate'&&S.A&&!S.special) S.done.analyze=1;
+    if(S.route==='contracts'&&S.cid) S.done.contract=1;
+    if(S.route==='negotiate'&&S.A&&S.A.counter&&S.A.counter.max) S.done.counter=1;
+    if(S.route==='growth') S.done.growth=1;
+  }
+  renderCoach(); countUps(); addDictation();
+}
+function go(r){ S.route=r; if(r==='negotiate'&&!S.draft) setDraft(); render(); if(r==='contracts') ensureContract(); }
+
+async function ensureContract(){
+  const A=S.A; if(!A||!A.con||S.C||S.cbusy) return;
+  S.cbusy=true; render(false);
+  try{
+    const r=await ai('Contract review. For each issue, rewrite the plain-English reading and the commercial consequence for this creator specifically. Also list up to 6 standard creator-agreement terms that are absent from the contract. Do not reach any legal conclusion. Do not change the number of issues.',
+      'CONTRACT:\n'+A.con+'\n\nISSUES:\n'+JSON.stringify(A.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,clause:r.clause,quote:r.quote,reading:r.reading,consequence:r.consequence}))),
+      '{"issues":[{"key":string,"reading":string,"consequence":string}],"missing":[{"term":string,"why":string}]}');
+    const risks=JSON.parse(JSON.stringify(A.risks));
+    risks.forEach(k=>{ const x=Array.isArray(r.issues)&&r.issues.find(y=>y&&y.key===k.key); if(x){ if(typeof x.reading==='string'&&x.reading.length>10&&x.reading.length<300)k.reading=x.reading; if(typeof x.consequence==='string'&&x.consequence.length>10&&x.consequence.length<340)k.consequence=x.consequence; } });
+    let missing=missingTerms(A.con);
+    if(Array.isArray(r.missing)&&r.missing.length&&r.missing.every(m=>m&&typeof m.term==='string'&&typeof m.why==='string')) missing=r.missing.slice(0,6);
+    S.C={risks,missing}; S.cMode='live';
+  }catch(err){ S.C={risks:A.risks,missing:missingTerms(A.con)}; S.cMode='fallback'; S.reason=reasonOf(err); }
+  S.cbusy=false; if(S.route==='contracts') render(false);
+}
+
+function loadOffer(id){
+  if(id==='blank'){ Object.assign(S,{brandName:'',site:'',cur:'blank',msg:'',con:'',file:'',A:null,special:null,C:null,mode:'',draft:''}); return; }
+  const o=OFFERS[id]; Object.assign(S,{brandName:o.brand,site:'',cur:id,msg:o.msg,con:o.con,file:o.file,A:null,special:null,C:null,mode:'',draft:'',draftDirty:false,cMode:'max'});
+}
+function quickAnalysis(id){ loadOffer(id); S.A=analyze(S.msg,S.con); S.mode=''; setDraft(); }
+
+/* ============ events ============ */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
+  if(a==='go'){ e.preventDefault(); const r=b.dataset.r; if(r==='rate'&&!S.msg&&S.cur!=='blank'&&!S.A) loadOffer('glow'); if(r==='contracts'){ S.cid=null; } if(r==='negotiate'&&S.mode==='rule'&&!S.A){ loadOffer('glow'); S.A=analyze(S.msg,S.con); } go(r); }
+  else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
+  else if(a==='menu'){ $('#side').classList.toggle('open'); $('#scrim').classList.toggle('open'); }
+  else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); }
+  else if(a==='sc-toggle'){ const s=S.profile.social[+b.dataset.i]; if(!s.active){ openLink(+b.dataset.i); } else { s.active=false; s.conn=false; S.dirty=true; render(false); } }
+  else if(a==='issue'){ setIssue(b.dataset.k,b.dataset.s); }
+  else if(a==='issues-all'){ const c=S.contracts.find(x=>x.id===S.cid); if(c){ c.states=c.states||{}; cRisks(c).forEach(r=>{ if(stOf(c,r.key)==='open') c.states[r.key]='reviewed'; }); if(S.A&&!S.draftDirty) setDraft(); softRender(); toast('All issues marked reviewed'); } }
+  else if(a==='av-shuffle'){ shuffleAvatar(); }
+  else if(a==='sc-connect'){ openLink(+b.dataset.i); }
+  else if(a==='lk-auth'){ startAuth(); }
+  else if(a==='lk-close'){ closeLink(); }
+  else if(a==='goto-field'){ const f=document.getElementById(b.dataset.f); if(f){ f.scrollIntoView({behavior:'smooth',block:'center'}); const i=f.matches('input,select,textarea')?f:f.querySelector('input,select,textarea,button'); if(i) setTimeout(()=>i.focus({preventScroll:true}),350); } }
+  else if(a==='topic-other'){ S.otherOpen=!S.otherOpen; render(false); if(S.otherOpen) setTimeout(()=>{ const e=$('#topic_other'); if(e) e.focus(); },50); }
+  else if(a==='topic-add'){ const e=$('#topic_other'), v=(e?e.value:'').trim(); if(v.length<2){ toast('Type a topic first.'); return; } const arr=S.profile.subs; if(!arr.some(x=>x.toLowerCase()===v.toLowerCase())) arr.push(v); S.dirty=true; render(false); setTimeout(()=>{ const n=$('#topic_other'); if(n) n.focus(); },50); toast('Added '+v); }
+  else if(a==='pf-toggle'){ S.profile[b.dataset.k]=!S.profile[b.dataset.k]; S.dirty=true; b.setAttribute('aria-checked',String(S.profile[b.dataset.k])); const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; }
+  else if(a==='chip'){ const arr=S.profile[b.dataset.k], v=b.dataset.v, i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); S.dirty=true; b.setAttribute('aria-pressed',String(i<0)); if(i>=0&&!SUBS.includes(v)&&!LANGS.includes(v)){ S.dirty=true; render(false); return; } const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
+  else if(a==='pf-save'){ const em=S.profile.email.trim(); if(em&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em)){ const e=$('#err_email'); if(e) e.textContent='Enter a valid email address, like name@example.com.'; toast('Check your email address.'); return; } if(!S.profile.name.trim()){ toast('Add your name before saving.'); return; } S.dirty=false; S.snap=JSON.stringify(S.profile); S.done.profile=1; applyTheme(); toast('Profile saved'); const si=$('#saveinfo'); if(si) si.textContent='All changes saved.'; const e=$('#err_email'); if(e) e.textContent=''; }
+  else if(a==='pf-reset'){ if(S.snap) S.profile=JSON.parse(S.snap); S.dirty=false; applyTheme(); render(false); toast('Changes discarded'); }
+  else if(a==='mic'){ startDict(b); }
+  else if(a==='mic-lang'){ stopDict(); S.lang=S.lang==='en-IN'?'hi-IN':'en-IN'; document.querySelectorAll('[data-a="mic-lang"]').forEach(x=>{ x.textContent=S.lang==='hi-IN'?'हि':'EN'; }); toast(S.lang==='hi-IN'?'Speaking Hindi (हिन्दी)':'Speaking English (India)'); }
+  else if(a==='tour-start'){ $('#coach').dataset.k=''; tourGo(0); }
+  else if(a==='tour-next'){ if(S.tour>=TOUR.length-1) tourEnd(); else { $('#coach').dataset.k=''; tourGo(S.tour+1); } }
+  else if(a==='tour-prev'){ $('#coach').dataset.k=''; tourGo(S.tour-1); }
+  else if(a==='tour-skip'){ $('#coach').dataset.k=''; tourEnd(); }
+  else if(a==='hide-start'){ S.hideStart=true; render(false); }
+  else if(a==='task'){ const t=b.dataset.t, r=b.dataset.r; if(t==='analyze'){ loadOffer('glow'); S.route='rate'; render(); await runAnalysis(); } else if(t==='checker'){ S.route='checker'; render(); } else if(t==='profile'){ S.route='profile'; render(); } else if(r==='contracts'){ openContract('glow'); } else { ensureGlow(); S.route=r; if(r==='negotiate'&&!S.draft) setDraft(); render(); if(r==='contracts') ensureContract(); } }
+  else if(a==='add-opp'){ loadOffer('blank'); S.route='rate'; render(); }
+  else if(a==='load'){ loadOffer(b.dataset.id); render(false); }
+  else if(a==='analyze'){ await runAnalysis(); }
+  else if(a==='analyze-offer'){ loadOffer(b.dataset.id); S.route='rate'; render(); await runAnalysis(); if(S.A&&S.A.counter&&S.A.counter.max) setDraft(); }
+  else if(a==='open-contract'){ openContract(b.dataset.id); }
+  else if(a==='contracts-list'){ S.cid=null; render(); }
+  else if(a==='add-contract'){ loadOffer('blank'); S.route='rate'; render(); toast('Enter the brand name, paste or upload the contract, then analyze.'); }
+  else if(a==='review-current'){ if(S.A&&S.A.con&&S.con.trim()){ const c=upsertContract(); if(c){ openContract(c.id); return; } } S.cid=null; S.route='contracts'; render(); toast('No contract text on this offer. Pick one from your list, or add it above.'); }
+  else if(a==='open-counter'){ quickAnalysis(b.dataset.id); S.route='negotiate'; render(); }
+  else if(a==='evalp'){ const i=+b.dataset.i; Object.assign(S,{brandName:'',site:'',cur:'blank',msg:EVAL_PROMPTS[i],con:'',file:'',A:null,special:null,C:null,mode:'',draft:''}); render(false); await runAnalysis(); }
+  else if(a==='mode'){ S.cMode=b.dataset.m; setDraft(); S.refused=false; render(false); aiDraft(''); }
+  else if(a==='copy-draft'){ copyText(S.draft,'Copied. CreVa has not sent anything. Send it from your own account.'); }
+  else if(a==='refine'){ const t=S.instr.trim(); if(!t)return; if(refusal(t)||/\b(send|accept|sign)\b/i.test(t)){ S.refused=true; render(false); return; } S.refused=false; aiDraft(t); }
+  else if(a==='dtab'){ S.dealTab=b.dataset.t; S.dealId=S.dealTab==='active'?'glow':''; render(false); }
+  else if(a==='deal'){ S.dealId=b.dataset.id; render(false); }
+  else if(a==='chase'){ S.chase=true; S.chaseDraft=`Hi, a quick note on my invoice of ₹22,000 for the WellnessCo campaign. It was due 6 days ago and I have not yet received payment. Could you confirm the payment date this week? Happy to resend the invoice if it helps.`; render(false); }
+  else if(a==='copy-chase'){ copyText(S.chaseDraft,'Copied. CreVa has not sent anything. Send it yourself.'); }
+  else if(a==='gtab'){ S.tab=b.dataset.t; render(false); }
+  else if(a==='autopsy'){ runAutopsy(); }
+  else if(a==='checker'){ e.preventDefault(); S.route='checker'; render(); }
+  else if(a==='exit-checker'){ e.preventDefault(); if(S.route==='checker'&&S.chkOut){ const c=S.chk; S.msg=''; S.cur='blank'; } S.route='rate'; if(!S.msg&&S.cur!=='blank') loadOffer('glow'); render(); }
+  else if(a==='check'){ runCheck(); }
+  else if(a==='copy-check'){ const o=S.chkOut; copyText(`CreVa rate check: ${S.chk.platform}, ${o.deliv}. Indicative range ${INR(o.low)} to ${INR(o.high)}. Confidence ${o.conf}. ${o.tier}. Directional, not a market average.`,'Copied.'); }
+});
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches('.row[data-a]')){ e.preventDefault(); e.target.click(); } });
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.lk&&S.link){ S.link[t.dataset.lk]=t.type==='checkbox'?t.checked:t.value; }
+  if(t.dataset.pf){ S.profile[t.dataset.pf]=t.value; S.dirty=true; const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
+  if(t.dataset.sc){ const [i,f]=t.dataset.sc.split(':'); S.profile.social[+i][f]=t.type==='number'&&t.value!==''?+t.value:t.value; S.dirty=true; const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
+  if(t.dataset.bind){ const k=t.dataset.bind; S[k]=t.value; if(k==='draft')S.draftDirty=true; if(k==='msg'){ const mc=$('#mc'); if(mc) mc.textContent=t.value.length+'/2000'; } }
+  if(t.dataset.ck){ S.chk[t.dataset.ck]=t.type==='number'?(t.value===''?'':+t.value):t.value; }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.aChange==='post'){ S.post=t.value; render(false); }
+  if(t.dataset.ck==='platform'){ S.chk.deliver=t.value==='LinkedIn'?'li1':'reel'; render(false); }
+  if(t.id==='av_up'&&t.files&&t.files[0]){ const f=t.files[0]; if(f.size>4e6){ toast('Choose a photo under 4 MB.'); return; } const rd=new FileReader(); rd.onload=()=>{ S.profile.avatar.photo=String(rd.result); S.dirty=true; refreshAvatar(); const si=document.getElementById('saveinfo'); if(si) si.textContent='You have unsaved changes.'; }; rd.readAsDataURL(f); return; }
+  if(t.id==='upl'&&t.files&&t.files[0]){
+    const f=t.files[0];
+    if(/\.pdf$/i.test(f.name)){ S.file=f.name; $('#uplnote').textContent='PDF noted: '+f.name+'. CreVa reads text only, so paste the contract text into the box above.'; return; }
+    const rd=new FileReader(); rd.onload=()=>{ S.con=String(rd.result||''); S.file=f.name; render(false); }; rd.readAsText(f);
+  }
+});
+function copyText(txt,msg){
+  const fb=()=>{ const ta=document.querySelector('#draft,#chased'); if(ta){ ta.focus(); ta.select(); } toast('Select the text and copy it with Ctrl+C.'); };
+  try{ navigator.clipboard.writeText(txt).then(()=>toast(msg)).catch(fb); }catch(e){ fb(); }
+}
+
+async function runAutopsy(){
+  const p=POSTS.find(x=>x.id===S.post), rule=autopsyRule(p); S.abusy=true; render(false);
+  let out=Object.assign({mode:'fallback'},rule);
+  try{
+    const a=await ai('Post autopsy. Explain why the post underperformed ONLY if the data supports it. Separate observed metrics from hypotheses. If retention, saves, shares and posting time are within the creator\'s normal range, say you do not have enough evidence and set confidence to INSUFFICIENT EVIDENCE. Never blame the hook, the algorithm, posting time or the audience without evidence, and never state a cause as fact.',
+      JSON.stringify({post:p.title,date:p.date,vsMedianPercent:p.m,postingWindow:p.win,ruleOutcome:rule.kind==='ins'?'insufficient evidence':'retention is a hypothesis only'}),
+      '{"confidence":"INSUFFICIENT EVIDENCE|LOW","answer":string,"observed":[string],"hypotheses":[string]}');
+    const ok=typeof a.answer==='string'&&a.answer.length>30&&a.answer.length<700&&Array.isArray(a.observed)&&a.observed.length
+      &&!/\bbecause\b|due to|caused by|the algorithm|shadow ?ban/i.test(a.answer)
+      &&(rule.kind==='ins'?(a.confidence==='INSUFFICIENT EVIDENCE'&&(!Array.isArray(a.hypotheses)||!a.hypotheses.length)):(a.confidence==='LOW'&&/can'?not|can't|unable|not establish|not proven/i.test(a.answer)));
+    if(ok) out={mode:'live',conf:a.confidence,answer:a.answer,observed:a.observed.slice(0,5).map(String),hyp:rule.kind==='ins'?[]:(a.hypotheses||[]).slice(0,3).map(String),kind:rule.kind};
+    else throw new Error('shape');
+  }catch(err){ S.reason=reasonOf(err); }
+  S.auto[p.id]=out; S.abusy=false; if(S.route==='growth') render(false);
+}
+
+async function runCheck(){
+  const c=S.chk; const f={platform:c.platform,followers:+c.followers||null,eng:c.eng===''?null:+c.eng,deliver:c.deliver,usage:c.usage,excl:c.excl,last:+c.last||0};
+  const o=checkRate(f); S.chkOut=o; S.done.checker=1; S.chkBusy=true; S.chkMode=''; render(false);
+  try{
+    const a=await ai('Free rate check for an anonymous creator who is NOT Ananya; ignore the Ananya context. Use only the inputs given. Do not use follower count as the sole variable. Write 3 to 5 short, specific items on what would narrow this range. Confidence is '+o.conf+' and must not change.',
+      JSON.stringify({inputs:f,niche:c.niche,range:[o.low,o.high],evidence:o.tier,drivers:o.drivers}),'{"narrow":[string]}');
+    if(Array.isArray(a.narrow)&&a.narrow.length>=2&&a.narrow.every(x=>typeof x==='string'&&x.length>10&&x.length<220)){ o.narrowAI=a.narrow.slice(0,5); S.chkMode='live'; } else throw new Error('shape');
+  }catch(err){ S.chkMode='fallback'; S.reason=reasonOf(err); }
+  S.chkBusy=false; if(S.route==='checker') render(false);
+}
+
+/* ---- profile ---- */
+S.profile={name:'Ananya Sharma',gender:'Female',dob:'',email:'ananya.sharma@example.com',phone:'+91 98765 43210',city:'Bengaluru',state:'Karnataka',bio:'Career and productivity creator. I help young professionals handle appraisals, side income and deep work.',
+  niche:'Career and productivity',audAge:'22 to 34',audCity:'Bengaluru, Mumbai, Delhi NCR',minFee:'',invName:'Ananya Sharma',gst:'Not registered',gstin:'',upi:'',
+  nOffer:true,nPay:true,nDisc:true,langs:['English','Hindi'],subs:['Careers','Productivity'],
+  social:[
+   {id:'ig',name:'Instagram',ab:'IG',bg:'#E4416A',active:true,handle:'ananyasharma',followers:54000,avg:''},
+   {id:'li',name:'LinkedIn',ab:'in',bg:'#2B6CB0',active:true,handle:'ananya-sharma',followers:18000,avg:''},
+   {id:'yt',name:'YouTube',ab:'YT',bg:'#D93025',active:false,handle:'',followers:'',avg:''},
+   {id:'x',name:'X',ab:'X',bg:'#24242E',active:false,handle:'',followers:'',avg:''},
+   {id:'fb',name:'Facebook',ab:'f',bg:'#2F5FD0',active:false,handle:'',followers:'',avg:''},
+   {id:'th',name:'Threads',ab:'@',bg:'#3A3A44',active:false,handle:'',followers:'',avg:''}]};
+S.dirty=false;
+S.brandName='GlowSkin'; S.site='';
+const brandOf=()=>(S.brandName||'').trim()||(brandOf());
+function cleanSite(v){ v=(v||'').trim(); if(!v) return ''; const l=v.toLowerCase(); if(!l.startsWith('http://')&&!l.startsWith('https://')) v='https://'+v; try{ const u=new URL(v); if(!u.hostname.includes('.')) return null; return u.href; }catch(e){ return null; } }
+function siteHost(){ try{ return new URL(S.site).hostname.replace('www.',''); }catch(e){ return S.site; } }
+function brandCtx(){ return 'BRAND: '+brandOf()+(S.site?' (website '+S.site+'; CreVa has not visited it, so assume nothing about the brand from it)':'')+String.fromCharCode(10,10); }
+const firstName=()=>(S.profile.name||'there').trim().split(/\s+/)[0]||'there';
+function profItems(){
+  const p=S.profile, act=p.social.filter(s=>s.active&&s.handle);
+  return [['Name',!!p.name.trim(),'pf_name'],['Email',!!p.email.trim(),'pf_email'],['Phone',!!p.phone.trim(),'pf_phone'],['Gender',!!p.gender,'pf_gender'],['Date of birth',!!p.dob,'pf_dob'],['City',!!p.city.trim(),'pf_city'],['Short bio',!!p.bio.trim(),'pf_bio'],['Main niche',!!p.niche,'pf_niche'],['Content language',p.langs.length>0,'pf_langs'],['Minimum fee for a Reel',!!String(p.minFee).trim(),'pf_minFee'],['One active social account',act.length>0,'pf_social'],['Name on invoices',!!p.invName.trim(),'pf_invName'],['UPI ID or GSTIN',!!(p.upi.trim()||p.gstin.trim()),'pf_upi']];
+}
+function profPct(){ const it=profItems(); return Math.round(it.filter(x=>x[1]).length/it.length*100); }
+function missHtml(){
+  const m=profItems().filter(x=>!x[1]);
+  return m.length?m.map(x=>`<button type="button" class="miss" data-a="goto-field" data-f="${x[2]}">${ic('plus',14)}<span>${x[0]}</span>${ic('chev',14)}</button>`).join(''):`<div class="note acc">${ic('check',18)}<span>Everything is filled in.</span></div>`;
+}
+function accHtml(){
+  const act=S.profile.social.filter(s=>s.active);
+  return act.length?act.map(s=>`<div class="kvr" style="margin:0 0 8px"><span class="logo" style="background:${s.bg};width:34px;height:34px;font-size:12px">${s.ab}</span><span style="flex:1;min-width:0;font-weight:600;text-align:left">${s.name}<br><small class="muted" style="font-weight:400">${s.handle?'@'+esc(s.handle):'No handle yet'}${s.followers?' · '+Number(s.followers).toLocaleString('en-IN'):''}</small></span>${s.conn?'<span class="sev ok">API</span>':'<span class="sev low">Manual</span>'}</div>`).join(''):'<div class="muted small">No active accounts yet. Switch one on in Social accounts.</div>';
+}
+function updProf(){
+  const p=S.profile, pct=profPct(), g=id=>document.getElementById(id); if(!g('pfpct')) return;
+  g('pfpct').textContent=pct+'%'; g('pfbar').style.width=pct+'%'; g('pfname').textContent=p.name||'Your name';
+  g('pfmiss').innerHTML=missHtml(); g('pfacc').innerHTML=accHtml(); g('pfmc').textContent=profItems().filter(x=>!x[1]).length;
+}
+const GENDERS=['Female','Male','Non-binary','Prefer not to say'];
+const NICHES=['Career and productivity','Finance','Beauty and skincare','Fitness and wellness','Tech','Food','Travel','Fashion','Education','Parenting','Gaming','Other'];
+const LANGS=['English','Hindi','Marathi','Tamil','Telugu','Kannada','Bengali','Gujarati','Malayalam','Punjabi'];
+const SUBS=['Careers','Productivity','Money','Study tips','Startups','Remote work','Skincare','Wellness','Lifestyle'];
+V.profile=()=>{
+  const p=S.profile, pct=profPct();
+  const inp=(l,k,o={})=>`<div><label class="f" for="pf_${k}">${l}</label><input type="${o.t||'text'}" id="pf_${k}" data-pf="${k}" value="${esc(p[k])}" placeholder="${esc(o.ph||'')}" ${o.t==='email'?'autocomplete="email"':''}>${o.err?`<div class="err" id="err_${k}"></div>`:''}</div>`;
+  const sel=(l,k,arr)=>`<div><label class="f" for="pf_${k}">${l}</label><select id="pf_${k}" data-pf="${k}">${arr.map(x=>`<option ${p[k]===x?'selected':''}>${x}</option>`).join('')}</select></div>`;
+  const chip=(k,x)=>`<button type="button" class="chipsel" data-a="chip" data-k="${k}" data-v="${esc(x)}" aria-pressed="${p[k].includes(x)}">${esc(x)}</button>`;
+  const tog=(l,d,k)=>`<div class="kvr" style="margin:0"><div style="flex:1"><b>${l}</b><div class="muted small">${d}</div></div><button type="button" class="sw" role="switch" aria-checked="${p[k]}" data-a="pf-toggle" data-k="${k}" aria-label="${l}"><i></i></button></div>`;
+  const act=p.social.filter(s=>s.active);
+  const subsAll=[...SUBS,...p.subs.filter(x=>!SUBS.includes(x))];
+  const soc=p.social.map((s,i)=>`<div class="soc ${s.active?'on':''}"><div class="sh"><span class="logo" style="background:${s.bg};width:42px;height:42px;font-size:15px">${s.ab}</span><div><b>${s.name}</b><div class="small ${s.active?'':'muted'}" style="${s.active?'color:var(--ok)':''}">${s.active?(s.conn?'Connected via API':'Added manually'):'Not linked'}</div></div><button type="button" class="sw" role="switch" aria-checked="${s.active}" data-a="sc-toggle" data-i="${i}" aria-label="${s.name} is active"><i></i></button></div>
+    ${s.active?`<div class="sf"><div><label for="sc_${i}_h">Handle</label><input type="text" id="sc_${i}_h" data-sc="${i}:handle" value="${esc(s.handle)}" placeholder="yourhandle"></div><div><label for="sc_${i}_f">Followers</label><input type="number" id="sc_${i}_f" data-sc="${i}:followers" value="${esc(s.followers)}" min="0" placeholder="0"></div><div><label for="sc_${i}_a">Avg views</label><input type="number" id="sc_${i}_a" data-sc="${i}:avg" value="${esc(s.avg)}" min="0" placeholder="Last 5 posts"></div></div>${s.conn?'':`<div><button type="button" class="btn sm" data-a="sc-connect" data-i="${i}">${ic('link',14)} Connect via API</button></div>`}`:`<div class="muted small">Link ${s.name} to add it to your profile.</div><div><button type="button" class="btn sm" data-a="sc-connect" data-i="${i}">${ic('link',14)} Link account</button></div>`}</div>`).join('');
+  return `${pageHead('Profile','Your details and active accounts. CreVa uses these to read offers the way a brand would.')}
+  <div class="prof2"><div class="stack">
+   <div class="card fsec"><div class="h3">Personal details</div><div class="fgrid">
+     ${inp('Full name','name',{ph:'Your name'})}${sel('Gender','gender',GENDERS)}
+     ${inp('Date of birth','dob',{t:'date'})}${inp('Email','email',{t:'email',ph:'you@example.com',err:1})}
+     ${inp('Phone','phone',{t:'tel',ph:'+91 98765 43210'})}${inp('City','city')}
+     ${inp('State','state')}</div>
+     <div style="margin-top:16px"><label class="f" for="pf_bio">Short bio</label><textarea id="pf_bio" data-pf="bio" rows="3" maxlength="300">${esc(p.bio)}</textarea></div></div>
+   <div class="card fsec"><div class="h3">Creator details</div><div class="fgrid">
+     ${sel('Main niche','niche',NICHES)}${inp('Minimum fee for one Reel, ₹','minFee',{ph:'The lowest you would accept'})}
+     ${inp('Audience age','audAge',{ph:'22 to 34'})}${inp('Top audience cities','audCity')}</div>
+     <div style="margin-top:16px"><div class="lab">Topics you cover</div><div class="chiprow">${subsAll.map(x=>chip('subs',x)).join('')}<button type="button" class="chipsel" data-a="topic-other" aria-pressed="${!!S.otherOpen}">${ic('plus',13)} Other</button></div>
+       ${S.otherOpen?`<div class="otherrow"><div style="flex:1;min-width:0"><input type="text" id="topic_other" placeholder="Type a topic, for example Personal finance" maxlength="30" aria-label="Other topic"></div><button type="button" class="btn p" data-a="topic-add">Add topic</button></div>`:''}</div>
+     <div style="margin-top:16px" id="pf_langs"><div class="lab">Content languages</div><div class="chiprow">${LANGS.map(x=>chip('langs',x)).join('')}</div></div></div>
+   <div class="card fsec" id="pf_social"><div class="h3">Social accounts <span class="sev acc">${act.length} active</span></div>
+     <p class="muted small" style="margin:-6px 0 14px">Link each platform you post on. CreVa asks for read-only access to your profile and insights, and cannot post or message for you. Pricing reads Instagram and LinkedIn today. The rest are saved to your profile.</p>
+     <div class="socs">${soc}</div></div>
+   <div class="card fsec"><div class="h3">Invoicing and payouts</div><div class="fgrid">
+     ${inp('Name on invoices','invName')}${sel('GST status','gst',['Not registered','Registered'])}
+     ${p.gst==='Registered'?inp('GSTIN','gstin',{ph:'15 characters'}):''}${inp('UPI ID','upi',{ph:'name@bank'})}</div>
+     <p class="muted small" style="margin-top:12px">Used to fill invoices and reminders. Stored on this page only, in memory, and cleared when you reload.</p></div>
+   <div class="card fsec"><div class="h3">Preferences</div><div class="stack" style="gap:10px">
+     ${tog('New offers','Tell me when a brand offer arrives.','nOffer')}${tog('Payment reminders','Flag invoices that are due or late.','nPay')}${tog('Disclosure checks','Warn me when a draft is missing the paid partnership label.','nDisc')}</div></div>
+   <div class="savebar"><span class="muted small" id="saveinfo">${S.dirty?'You have unsaved changes.':'All changes saved.'}</span><div style="display:flex;gap:10px"><button class="btn" data-a="pf-reset">Reset</button><button class="btn p" data-a="pf-save">Save profile</button></div></div>
+  </div>
+  <div class="sidecol">
+   <div class="card pad sumcard"><div class="avwrap"><div class="bigav" id="pfav">${avatarHtml()}</div><div class="avbtns"><button type="button" class="btn sm" data-a="av-shuffle">${ic('refresh',14)} Shuffle</button><label class="btn sm" for="av_up" style="cursor:pointer">${ic('upload',14)} Upload photo</label><input type="file" id="av_up" accept="image/*" class="hide"></div></div>
+    <div><div class="mid" id="pfname" style="font-size:21px">${esc(p.name||'Your name')}</div><div class="muted small">${esc(p.city||'City')}</div></div>
+    <div style="width:100%"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="lab" style="margin:0">Profile complete</span><b id="pfpct">${pct}%</b></div><div class="meter"><i id="pfbar" style="width:${pct}%"></i></div></div></div>
+   <div class="card pad"><div class="h3">Still to add <span class="sev acc" id="pfmc">${profItems().filter(x=>!x[1]).length}</span></div><div class="misslist" id="pfmiss">${missHtml()}</div></div>
+   <div class="card pad"><div class="h3">Active accounts</div><div id="pfacc">${accHtml()}</div></div>
+  </div></div>`;
+};
+
+/* ---- link a social account (pop-up) ---- */
+const AUTHN={ig:'Meta login',li:'LinkedIn sign-in',yt:'Google sign-in',x:'X sign-in',fb:'Meta login',th:'Meta login'};
+const SCOPES={ig:['Your profile name and handle','Follower count','Post insights: views, reach, saves and shares'],li:['Your profile name and headline','Follower and connection counts','Post impressions and engagement'],yt:['Your channel name and handle','Subscriber count','Video views and watch time'],x:['Your profile name and handle','Follower count','Post impressions and engagement'],fb:['Your page name','Follower count','Post reach and engagement'],th:['Your profile name and handle','Follower count','Post views and replies']};
+let LKT=null;
+function openLink(i){ const s=S.profile.social[i]; S.link={i,step:'form',handle:s.handle||'',url:'',followers:s.followers||'',consent:false,err:''}; renderModal(); setTimeout(()=>{ const e=$('#lk_h'); if(e) e.focus(); },60); }
+function closeLink(){ clearTimeout(LKT); S.link=null; renderModal(); }
+function renderModal(){
+  const el=$('#modal'); if(!el) return; const L=S.link;
+  if(!L){ el.innerHTML=''; return; }
+  const s=S.profile.social[L.i];
+  const head=`<div class="cb"><span class="logo" style="background:${s.bg};width:48px;height:48px">${s.ab}</span><div><h3>Connect ${s.name}</h3><div class="muted small">Sign in with ${AUTHN[s.id]}</div></div><button type="button" class="round" style="margin-left:auto;width:36px;height:36px" data-a="lk-close" aria-label="Close">${ic('plus',16).replace('<svg ','<svg style="transform:rotate(45deg)" ')}</button></div>`;
+  let body='';
+  if(L.step==='form') body=`${head}
+    <div class="fgrid"><div><label class="f" for="lk_h">${s.name} handle</label><input type="text" id="lk_h" data-lk="handle" value="${esc(L.handle)}" placeholder="yourhandle" autocomplete="off" maxlength="40"></div>
+      <div><label class="f" for="lk_u">Profile link (optional)</label><input type="text" id="lk_u" data-lk="url" value="${esc(L.url)}" placeholder="https://" inputmode="url"></div></div>
+    <div><label class="f" for="lk_f">Followers (optional)</label><input type="number" id="lk_f" data-lk="followers" value="${esc(L.followers)}" min="0" placeholder="Filled in from the API once it is live"></div>
+    <div class="perm"><div class="lab">CreVa will ask for read-only access to</div>${SCOPES[s.id].map(x=>`<div>${ic('check',16)}<span>${x}</span></div>`).join('')}<div class="muted small" style="margin-top:6px">CreVa cannot post, message or change anything on your account. You can disconnect at any time.</div></div>
+    <label class="consent"><input type="checkbox" data-lk="consent" ${L.consent?'checked':''}><span>I authorize CreVa to read this account's profile and insights.</span></label>
+    ${L.err?`<div class="err">${esc(L.err)}</div>`:''}
+    <div class="note">${ic('alert',18)}<span><b>Demo mode.</b> This prototype simulates the sign-in. No request is sent to ${s.name}, and the follower figure is the one you type.</span></div>
+    <div class="act"><button type="button" class="btn" data-a="lk-close">Cancel</button><span class="sp2"></span><button type="button" class="btn p" data-a="lk-auth">${ic('lock',16)} Authorize with ${s.name}</button></div>`;
+  else if(L.step==='auth'){ const steps=['Opening secure sign-in','Confirming you own @'+L.handle,'Checking read-only access to insights']; body=`${head}<div class="steps">${steps.map((t,k)=>`<div class="stp ${L.prog>k?'done':(L.prog===k?'cur':'')}"><span class="sc">${L.prog>k?ic('check',14):''}</span><span>${esc(t)}</span></div>`).join('')}</div><div class="meter"><i style="width:${Math.min(100,L.prog/3*100)}%"></i></div><p class="muted small">Keep this window open. This takes a few seconds.</p>`; }
+  else body=`${head}<div class="okbox"><span class="ib" style="width:64px;height:64px;color:var(--ok)">${ic('check',32)}</span><h3 style="font-size:22px">${s.name} is connected</h3><p class="muted">@${esc(L.handle)} is linked to your profile${L.followers?' with '+Number(L.followers).toLocaleString('en-IN')+' followers':''}. CreVa can read its profile and insights, read-only.</p></div><div class="act"><span class="sp2"></span><button type="button" class="btn p" data-a="lk-close">Done</button></div>`;
+  el.innerHTML=`<div class="tscrim" style="z-index:90" data-a="lk-close"></div><div class="coach center modal" role="dialog" aria-modal="true" aria-label="Connect ${s.name}" style="z-index:100;width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto">${body}</div>`;
+}
+function startAuth(){
+  const L=S.link, s=S.profile.social[L.i];
+  const h=(L.handle||'').trim().replace(/^@/,'');
+  if(!/^[A-Za-z0-9._-]{2,40}$/.test(h)){ L.err='Enter your handle using letters, numbers, dots, dashes or underscores.'; renderModal(); return; }
+  if(L.url){ const u=cleanSite(L.url); if(u===null){ L.err='Enter a valid profile link, like https://instagram.com/yourhandle.'; renderModal(); return; } L.url=u; }
+  if(!L.consent){ L.err='Tick the box to authorize read-only access.'; renderModal(); return; }
+  L.handle=h; L.err=''; L.step='auth'; L.prog=0; renderModal();
+  const tick=()=>{ if(!S.link) return; S.link.prog++; if(S.link.prog>=3){ s.active=true; s.conn=true; s.handle=h; if(L.followers!=='') s.followers=+L.followers||''; if(L.url) s.url=L.url; S.dirty=true; S.link.step='done'; renderModal(); if(S.route==='profile') render(false); return; } renderModal(); LKT=setTimeout(tick,750); };
+  LKT=setTimeout(tick,750);
+}
+
+/* ---- profile picture: random illustrated influencer avatar, or an uploaded photo ---- */
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+let AVN=0;
+function avatarSvg(seed){
+  const r=mulberry(seed), pick=a=>a[Math.floor(r()*a.length)], id='av'+(++AVN);
+  const skin=pick(['#F6D2B5','#EBBB92','#D49A6A','#B77A50','#8A5A3A','#6B4430']);
+  const hair=pick(['#1B1412','#2E1E16','#4A2E1E','#6B3F25','#8E5A2B','#2B2B3A']);
+  const bg=pick([['#FFD1DC','#FF8FA3'],['#D9C7FF','#9C6CF4'],['#FFE7A3','#F0BA22'],['#BDEBDD','#4CC2AC'],['#BFD8FF','#5E8BE6'],['#FFD2B8','#F28A5C']]);
+  const top=pick(['#2A2D52','#E4416A','#F0BA22','#2F8F83','#F6F1EA','#7A52C9','#C23B3B']);
+  const style=Math.floor(r()*5), glasses=r()<.3, ear=r()<.55, bindi=r()<.35;
+  const back=[`<path d="M30 54 Q28 18 60 18 Q92 18 90 54 L94 104 L26 104 Z" fill="${hair}"/>`,`<path d="M31 56 Q29 20 60 20 Q91 20 89 56 L88 80 Q60 90 32 80Z" fill="${hair}"/>`,`<circle cx="60" cy="15" r="11" fill="${hair}"/>`,'',`<circle cx="33" cy="58" r="10" fill="${hair}"/><circle cx="87" cy="58" r="10" fill="${hair}"/>`][style];
+  const front=[`<path d="M33 52 Q38 24 60 24 Q84 24 87 52 Q70 36 33 52Z" fill="${hair}"/>`,`<path d="M33 52 Q38 24 60 24 Q84 24 87 52 Q66 38 33 52Z" fill="${hair}"/>`,`<path d="M33 52 Q34 24 60 24 Q86 24 87 52 Q60 34 33 52Z" fill="${hair}"/>`,`<path d="M34 52 Q36 21 60 21 Q85 21 86 52 Q74 33 60 33 Q46 33 34 52Z" fill="${hair}"/>`,`<g fill="${hair}"><circle cx="40" cy="38" r="12"/><circle cx="50" cy="28" r="12"/><circle cx="62" cy="25" r="12"/><circle cx="74" cy="29" r="12"/><circle cx="82" cy="40" r="11"/></g>`][style];
+  return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profile picture" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${bg[0]}"/><stop offset="1" stop-color="${bg[1]}"/></linearGradient><clipPath id="${id}c"><rect width="120" height="120"/></clipPath></defs>
+  <g clip-path="url(#${id}c)"><rect width="120" height="120" fill="url(#${id}g)"/>${back}
+  <rect x="52" y="74" width="16" height="18" rx="6" fill="${skin}"/><path d="M52 82 Q60 90 68 82 L68 88 Q60 94 52 88Z" fill="#000" opacity=".12"/>
+  <path d="M14 124 Q20 92 60 92 Q100 92 106 124Z" fill="${top}"/>
+  <ellipse cx="60" cy="56" rx="22" ry="26" fill="${skin}"/>
+  ${ear?`<circle cx="38" cy="64" r="2.4" fill="#F0BA22"/><circle cx="82" cy="64" r="2.4" fill="#F0BA22"/>`:''}
+  <circle cx="50" cy="57" r="2.2" fill="#2A1A14"/><circle cx="70" cy="57" r="2.2" fill="#2A1A14"/>
+  <path d="M44 50 Q50 47 56 50M64 50 Q70 47 76 50" stroke="${hair}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M53 68 Q60 75 67 68" stroke="#8A3B3B" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="45" cy="65" r="4" fill="#E4416A" opacity=".18"/><circle cx="75" cy="65" r="4" fill="#E4416A" opacity=".18"/>
+  ${bindi?`<circle cx="60" cy="43" r="1.7" fill="#C23B3B"/>`:''}
+  ${glasses?`<g stroke="#2A1A14" stroke-width="1.6" fill="none"><circle cx="50" cy="57" r="7"/><circle cx="70" cy="57" r="7"/><path d="M57 57 H63"/></g>`:''}
+  ${front}</g></svg>`;
+}
+S.profile.avatar={seed:(function(){ try{ const v=localStorage.getItem('creva_av'); if(v) return +v; }catch(e){} const s=Math.floor(Math.random()*1e6)+1; try{ localStorage.setItem('creva_av',String(s)); }catch(e){} return s; })(),photo:null};
+function avatarHtml(){ const a=S.profile.avatar; return a.photo?`<img src="${a.photo}" alt="Profile picture" style="width:100%;height:100%;object-fit:cover;display:block">`:avatarSvg(a.seed); }
+function refreshAvatar(){ const e=document.getElementById('pfav'); if(e) e.innerHTML=avatarHtml(); document.querySelectorAll('.av').forEach(x=>{ x.innerHTML=avatarHtml(); }); }
+function shuffleAvatar(){ const a=S.profile.avatar; a.seed=Math.floor(Math.random()*1e6)+1; a.photo=null; try{ localStorage.setItem('creva_av',String(a.seed)); }catch(e){} S.dirty=true; refreshAvatar(); const si=document.getElementById('saveinfo'); if(si) si.textContent='You have unsaved changes.'; }
+
+/* ---- speech to text ---- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let REC=null, RECEL=null;
+S.lang='en-IN';
+function normSpeech(t){
+  return t.replace(/(\d+(?:\.\d+)?)\s*(thousand|lakhs?|crore)\b/gi,(m,n,u)=>String(Math.round(parseFloat(n)*({thousand:1e3,lakh:1e5,lakhs:1e5,crore:1e7}[u.toLowerCase()]))))
+          .replace(/(\d[\d,]*(?:\.\d+)?)\s*(?:rupees|rupee|rs\.?|inr)\b/gi,'₹$1');
+}
+function stopDict(){
+  if(REC){ try{ REC.onend=null; REC.onerror=null; REC.stop(); }catch(e){} }
+  REC=null; RECEL=null;
+  document.querySelectorAll('.mic.on').forEach(b=>{ b.classList.remove('on'); b.setAttribute('aria-pressed','false'); });
+  document.querySelectorAll('.dstat').forEach(d=>{ d.textContent=''; });
+}
+function startDict(btn){
+  const w=btn.closest('.dict'), el=w.querySelector('textarea,input'), st=w.querySelector('.dstat');
+  if(!SR){ toast('Speech input is not supported in this browser. Try Chrome or Edge, or type instead.'); return; }
+  if(REC&&RECEL===el){ stopDict(); return; }
+  stopDict();
+  const r=new SR(); r.lang=S.lang; r.continuous=true; r.interimResults=true;
+  const isNum=el.type==='number', base=isNum?'':el.value; let fin='';
+  const join=(a,b)=>!a?b:(!b?a:(/\s$/.test(a)?a+b:a+' '+b));
+  r.onresult=ev=>{
+    let interim=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const tr=ev.results[i][0].transcript; if(ev.results[i].isFinal) fin=join(fin,tr.trim()); else interim+=tr; }
+    const spoken=normSpeech(fin);
+    if(isNum){ const m=normSpeech(fin+' '+interim).replace(/₹/g,'').match(/\d[\d,]*(?:\.\d+)?/); if(m){ el.value=m[0].replace(/,/g,''); el.dispatchEvent(new Event('input',{bubbles:true})); } }
+    else { el.value=join(base,spoken); if(el.tagName==='TEXTAREA') el.scrollTop=el.scrollHeight; el.dispatchEvent(new Event('input',{bubbles:true})); }
+    st.textContent='Listening: '+(normSpeech(interim)||'speak now')+'  (tap the mic to stop)';
+  };
+  r.onerror=ev=>{
+    const e=ev.error; stopDict();
+    toast(e==='not-allowed'||e==='service-not-allowed'?'Microphone access is blocked. Allow it in the browser address bar, or type instead.':e==='no-speech'?'Did not hear anything. Tap the mic and try again.':e==='network'?'The speech service could not be reached. Check your connection, or type instead.':e==='audio-capture'?'No microphone was found.':'Speech input stopped. You can type instead.');
+  };
+  r.onend=()=>{ if(REC===r) stopDict(); };
+  try{ r.start(); REC=r; RECEL=el; btn.classList.add('on'); btn.setAttribute('aria-pressed','true'); st.textContent='Listening: speak now  (tap the mic to stop)'; }
+  catch(e){ toast('Could not start the microphone. Try again.'); }
+}
+function addDictation(){
+  document.querySelectorAll('#main textarea,#main input[type=text],#main input[type=number]').forEach(el=>{
+    if(el.closest('.dict')||el.dataset.nomic) return;
+    const w=document.createElement('div'); w.className='dict'+(el.tagName==='TEXTAREA'?'':' one'); w.style.flex=el.style.flex||''; if(el.style.flex) el.style.flex='';
+    el.parentNode.insertBefore(w,el); w.appendChild(el);
+    w.insertAdjacentHTML('beforeend',`<div class="dtools"><button type="button" class="mic lg" data-a="mic-lang" aria-label="Speech language" title="Speech language">${S.lang==='hi-IN'?'हि':'EN'}</button><button type="button" class="mic" data-a="mic" aria-label="Dictate this field" aria-pressed="false" title="Speak instead of typing">${ic('mic',16)}</button></div><div class="dstat" aria-live="polite"></div>`);
+  });
+}
+
+/* ---- discovery tour, checklist, count-up ---- */
+const TOUR=[
+ {r:'home',nav:null,ic:'spark',t:'Welcome to CreVa, Ananya',d:'CreVa tells you what a brand offer is really worth, what rights the contract takes, and how to negotiate it. This 1-minute tour shows what you can do and where. You can leave at any time and reopen it from the help button.',tip:'Nothing here accepts, signs or sends anything for you. You always make the final call.'},
+ {r:'home',nav:'home',ic:'home',t:'Home shows what needs you today',d:'Open offers, contract risks and late payments are ranked by urgency. Your rate growth and a live value breakdown sit below.',tip:'Start with the red dot: it marks the offer with the most at stake.'},
+ {r:'opps',nav:'opps',ic:'opp',t:'Opportunities: every offer in one inbox',d:'Offers from DMs and email arrive with a pre-assessment. Some are fine, and CreVa says so. Open any card with Analyze Deal.',tip:'FintechCo is the calm one. Not every offer is a trap.'},
+ {r:'rate',nav:'rate',ic:'rate',t:'Rate Intelligence: paste any offer',d:'Paste the brand message and the contract. You get a fair value range, a confidence level, the evidence behind it, ranked risks, and a panel of what CreVa could not determine.',tip:'Paste, type, upload, or press the mic on any field to speak it in English or Hindi. Press the button below to run the GlowSkin example.',try:['Analyze the example','analyze-offer','glow']},
+ {r:'contracts',nav:'contracts',ic:'contract',t:'Contracts: clauses in plain language',d:'Each risky clause is quoted, explained, and translated into what it costs you. Missing terms are listed too. CreVa explains commercial consequences, not legal validity.',tip:'High-value or rights-heavy deals get a note to consider legal review.'},
+ {r:'negotiate',nav:'rate',ic:'chat',t:'Negotiate: drafts you send yourself',d:'Pick Maximize value, Protect relationship or Preserve budget. CreVa writes an editable draft that names the terms behind the number. Copy it and send it from your own account.',tip:'Preserve budget keeps the brand\'s number and shrinks what they get.'},
+ {r:'deals',nav:'deals',ic:'deals',t:'Deals: what you agreed, in one place',d:'Track deliverables, due dates and agreed terms without reopening the PDF. See the progression from their first offer to your close.',tip:''},
+ {r:'payments',nav:'payments',ic:'pay',t:'Payments: know who owes you',d:'Expected, invoiced and received at a glance. Late items get a Chase button that drafts a reminder for you to send.',tip:''},
+ {r:'growth',nav:'growth',ic:'growth',t:'Growth: how brands read your numbers',d:'See which metrics are strongest evidence for a higher rate. Post Autopsy explains an underperforming post, and says so plainly when the data cannot explain it.',tip:'"I don\'t have enough evidence" is a real answer here, not an error.'},
+ {r:'profile',nav:null,ic:'user',t:'Profile: your details and active accounts',d:'Add your name, contact details, niche, minimum fee and invoicing details. Switch on each social account you post on and enter its handle and numbers.',tip:'A fuller profile helps CreVa read offers the way a brand would.'},
+ {r:'home',nav:'promo',ic:'crown',t:'Share the free rate checker',d:'The public rate checker gives anyone an indicative range without signing up. The result card is built to be screenshotted and shared with creator friends.',tip:'You are set. Press Finish, then try the Getting started list on Home.'}
+];
+const spotNav=()=>S.tour==null?null:TOUR[S.tour].nav;
+function tourSeen(){ try{ return localStorage.getItem('creva_tour')==='1'; }catch(e){ return false; } }
+function tourMark(){ try{ localStorage.setItem('creva_tour','1'); }catch(e){} }
+function ensureGlow(){ if(!(S.A&&S.A.counter&&S.A.counter.max)){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; S.C=null; setDraft(); } }
+function tourGo(i){
+  S.tour=Math.max(0,Math.min(TOUR.length-1,i)); const s=TOUR[S.tour];
+  if(s.r==='contracts'){ openContract('glow'); return; }
+  if(['contracts','negotiate','breakdown'].includes(s.r)) ensureGlow();
+  S.route=s.r; if(s.r==='negotiate'&&!S.draft) setDraft();
+  render(); if(s.r==='contracts') ensureContract();
+}
+function tourEnd(){ S.tour=null; tourMark(); render(false); }
+function renderCoach(){
+  const el=$('#coach'); if(!el) return;
+  if(S.tour==null){ el.innerHTML=''; return; }
+  const i=S.tour, s=TOUR[i], last=i===TOUR.length-1, center=i===0;
+  const key=i; if(el.dataset.k===String(key)&&el.innerHTML) return; el.dataset.k=String(key);
+  el.innerHTML=`${center?'<div class="tscrim" data-a="tour-skip"></div>':''}<div class="coach ${center?'center':''}" role="dialog" aria-label="CreVa tour" aria-live="polite">
+    <div class="cb"><span class="ib">${ic(s.ic,22)}</span><div class="eyebrow">${center?'Quick tour':'Step '+i+' of '+(TOUR.length-1)}</div></div>
+    <h3>${s.t}</h3><p>${s.d}</p>${s.tip?`<div class="tip">${ic('spark',16)}<span>${s.tip}</span></div>`:''}
+    <div class="dots" aria-hidden="true">${TOUR.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('')}</div>
+    <div class="act"><button class="btn sm" data-a="tour-skip">${last?'Close':'Skip tour'}</button><span class="sp2"></span>
+      ${s.try?`<button class="btn sm" data-a="${s.try[1]}" data-id="${s.try[2]}">${s.try[0]}</button>`:''}
+      ${i>0?'<button class="btn sm" data-a="tour-prev">Back</button>':''}
+      <button class="btn p sm" data-a="tour-next">${center?'Show me around':(last?'Finish':'Next')} ${ic('arrow',14)}</button></div></div>`;
+}
+const TASKS=[['analyze','Analyze an offer','Paste a brand message and see its fair value range.','rate'],['contract','Review a contract','See risky clauses in plain language.','contracts'],['counter','Build a counter','Get a draft you can edit and send yourself.','negotiate'],['growth','Read your growth','See which numbers brands pay attention to.','growth'],['checker','Try the rate checker','Get a free indicative range in a minute.','checker'],['profile','Complete your profile','Add your details and active accounts.','profile']];
+function checklist(){
+  if(S.hideStart) return '';
+  const n=TASKS.filter(t=>S.done[t[0]]).length;
+  return `<div class="card gs"><div class="top"><div><div class="h3" style="margin:0">Getting started <span class="sev acc">${n} of ${TASKS.length}</span></div><div class="muted small" style="margin-top:4px">Six things to try. Each one opens the screen where it lives.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="tour-start">${ic('help',15)} Take the tour</button><button class="btn sm" data-a="hide-start">Hide</button></div></div>
+    <div class="prog"><i style="width:${n/TASKS.length*100}%"></i></div>
+    <div class="rows">${TASKS.map(t=>`<button class="task ${S.done[t[0]]?'done':''}" data-a="task" data-t="${t[0]}" data-r="${t[3]}"><span class="ck">${ic('check',14)}</span><span><b>${t[1]}</b><small>${t[2]}</small></span></button>`).join('')}</div></div>`;
+}
+function countUps(){
+  if(S._static) return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  document.querySelectorAll('.cells .mid.num,.donut .c b,.opp .big.num,.ladder .mid.num').forEach(el=>{
+    const t=el.textContent.trim(), m=t.match(/^(₹?)([\d,]+(?:\.\d+)?)([KL]?)$/); if(!m) return;
+    const dec=(m[2].split('.')[1]||'').length, target=parseFloat(m[2].replace(/,/g,'')), comma=m[2].includes(','), t0=performance.now();
+    const fmt=v=>m[1]+(comma?Math.round(v).toLocaleString('en-IN'):v.toFixed(dec))+m[3];
+    const step=now=>{ const p=Math.min(1,(now-t0)/950), e=1-Math.pow(1-p,3); if(p<1){ el.textContent=fmt(target*e); requestAnimationFrame(step); } else el.textContent=t; };
+    requestAnimationFrame(step);
+  });
+}
+
+function applyTheme(){
+  const t=S.theme, r=document.documentElement;
+  if(t==='system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',t);
+  $('#rr').innerHTML=`<button class="pillbtn" data-a="theme" id="themeBtn">Theme: ${t[0].toUpperCase()+t.slice(1)}</button><button class="round" data-a="tour-start" aria-label="Take the tour" title="Take the tour">${ic('help',19)}</button><button class="round" data-a="go" data-r="contracts" aria-label="Contract alerts">${ic('bell',19)}<i></i></button><button class="who" data-a="go" data-r="profile" aria-label="Open your profile"><div class="av">${avatarHtml()}</div><span>${esc(firstName())}</span>${ic('chev',14)}</button>`;
+}
+S.theme='dark'; applyTheme();
+S.A=null; S.done={}; S.tour=null; S.hideStart=false; S.snap=JSON.stringify(S.profile); applyTheme();
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&S.link){ closeLink(); return; } if(e.key==='Enter'&&e.target.id==='topic_other'){ e.preventDefault(); const bt=document.querySelector('[data-a="topic-add"]'); if(bt) bt.click(); return; } if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.lk&&e.target.type!=='checkbox'&&S.link&&S.link.step==='form'){ e.preventDefault(); startAuth(); return; } if(e.key==='Escape'&&S.tour!=null){ $('#coach').dataset.k=''; tourEnd(); } });
+render();
+if(!tourSeen()) setTimeout(()=>{ if(S.tour==null&&S.route==='home'){ $('#coach').dataset.k=''; tourGo(0); } },700);
+</script>
