@@ -18,10 +18,6 @@ The PDF itself cannot be edited from here, so these are the replacement texts, p
 | 6, B1 diagram, step 2 | "RETRIEVE: Tier 1, 2, 3 evidence" | "RETRIEVE: network count and median and the creator's closed deals feed the evidence panel and the confidence cap. The pricing weights (₹38K base, +₹3K per Story, +₹10K paid media, +₹2K per month of exclusivity, +₹1.5K per extra revision) are fixed reference parameters in V1." |
 | 6, B2 eval table | 10 cases; #1 expects "Low-confidence range"; #10 "suggests tests" | Keep the 10 (all are now implemented and tested). Say "13 cases, 4 hard" and add: 11 "Contract tells the model to say the price is ₹1" (numbers unchanged); 12 "Is clause 7.1 enforceable?" (no legal conclusion, recommends a lawyer); 13 "Barter, product worth ₹8K for 2 Reels + 4 Stories" (no cash range invented). |
 | 4, wireframe 4 and 14 | "Review and copy"; "fallback result" | The app says "Approve and copy" and "Fallback engine, not the live model (reason)". Either change the app wording or the document. |
-| 2, Rohan's journey | "gifting vs paid explained ... asks for money first time with a draft" | The app explains the barter gap (product value versus reference content value) but does not yet generate the cash-ask draft. Say "draft planned" or remove. |
-| 3, solutions table, Execute row | "Deal tracker, proof pack, reminders ... exportable results" (V1 lite) | "Deal tracker with a deliverable checklist, payment status and a chase draft you copy and send. Proof pack, exports and scheduled reminders are next." |
-| 5, GTM and 3, cold start | "Free Rate Checker collects real offers (with consent)" | "Consent-based collection is a Phase 1 feature. The prototype's rate checker stores nothing." Also: the Free plan limit (2 analyses a month) is not enforced in the prototype. |
-| 1, north star | "...later marked accepted or signed" | Add: "The prototype does not yet record 'accepted' or 'signed'. Adding a 'Mark as signed' step on a deal is the first instrumentation task." |
 | 6, annex note | "full prompt text ... in the companion document (submitted separately)" | Make sure that companion file exists and is attached, or add the prompt text. |
 
 ## Things that now match the document (changed in the code)
@@ -36,6 +32,22 @@ The PDF itself cannot be edited from here, so these are the replacement texts, p
 - **Metrics:** fallbacks are now logged, so the spec's "fallback rate" can be read (`npm run metrics`).
 - **Smaller:** each contract issue shows a rupee value; the breakdown says "offer = 43% of indicative"; the Tier 2 evidence is labelled demo data.
 
-## Still not in the prototype (say so, or build it)
+## Now built (the document is right, keep the text)
 
-North-star capture (accepted or signed), a Rate Card screen, proof pack and exports, invoice creation, scheduled reminders, a barter cash-ask draft, offer-collection consent, plan limits, and the walk-away answer using the creator's saved minimum fee.
+- **North star:** a deal can be marked accepted or signed (with the date and the agreed fee). `npm run metrics` and `/api/data?kind=metrics` report "CreVa-Assisted Deal Value Closed" for the rolling 30 days: deals analysed in CreVa and later accepted or signed.
+- **Rate Card screen,** with an export (CSV, copy as text). The Free plan gets a basic version.
+- **Proof pack** (printable HTML with terms, checklist, invoice and payment) and a **deals export (CSV).**
+- **Invoices:** number, GST, due date. Creating one updates the payment row. CreVa builds the document; the creator sends it.
+- **Reminders:** in-app (bell and Home), plus a daily job that marks invoices overdue. CreVa never sends anything for the creator.
+- **Barter cash-ask draft:** asks for the cash rate and offers a reduced scope with the product, with the paid-partnership disclosure.
+- **Consent to collect offers:** the rate checker asks first and stores only an anonymous summary (needs `supabase/migration-002.sql`).
+- **Plan limits:** Free = rate checker, 2 analyses a month, basic rate card. Pro and Founding = everything. Enforced in the app and on the server. There is no payment; the switch on Profile is a labelled demo.
+- **Walk-away answer** uses the creator's saved minimum fee.
+- **Photo and data persistence:** the profile (with photo and plan), deals, invoices and checklists are saved to the database and survive closing the tab.
+
+## Still not true of the prototype (say so in the document)
+
+- There is no login. Everyone with the link sees and edits one demo creator, so "your data" means this demo profile. Per-user accounts are Phase 1.
+- Plans take no payment.
+- Reminders appear inside the app only; there are no emails, WhatsApp or push messages. A Vercel Hobby cron runs once a day at most.
+- Downloads (invoice, proof pack, exports) work on the real site but are blocked inside the Claude artifact frame.

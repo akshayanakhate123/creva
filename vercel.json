@@ -1,5 +1,8 @@
 {
   "buildCommand": "node scripts/build.js",
   "outputDirectory": "public",
-  "crons": [{ "path": "/api/keepalive", "schedule": "17 3 * * *" }]
+  "crons": [
+    { "path": "/api/keepalive", "schedule": "17 3 * * *" },
+    { "path": "/api/reminders", "schedule": "27 3 * * *" }
+  ]
 }

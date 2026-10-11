@@ -53,7 +53,9 @@ Vercel runs `node scripts/build.js` and serves `public/` plus `api/` (see `verce
    Changes to variables only apply to **new** deployments, so redeploy after changing one.
 4. Deploy, then run `npm run smoke:live -- https://YOUR-SITE.vercel.app`.
 
-A daily Vercel cron job (`/api/keepalive`, 03:17 UTC, see `vercel.json`) reads one row so the free Supabase project does not pause. On the free Hobby plan cron jobs can run only once a day and may fire up to an hour late.
+A daily Vercel cron job (`/api/keepalive`, 03:17 UTC, see `vercel.json`) reads one row so the free Supabase project does not pause. A second daily job (`/api/reminders`) marks past-due invoices overdue.
+
+One-time database step for the consent/share feature: run `supabase/migration-002.sql` in the Supabase SQL editor. Everything else works without it. On the free Hobby plan cron jobs can run only once a day and may fire up to an hour late.
 
 See `DEMO-DAY.md` for the demo checklist and `ROLLBACK.md` for rolling back.
 
@@ -61,11 +63,11 @@ See `DEMO-DAY.md` for the demo checklist and `ROLLBACK.md` for rolling back.
 
 - `GET /api/health` liveness check.
 - `POST /api/ai` the live model (Groq). Tasks: deal, contract, negotiate, autopsy, checker. The engine owns every number; the model only writes explanations. Guardrails (refuse to send/accept) run before any model call. Errors: `bad_request`, `too_large`, `rate_limited`, `upstream_error`, `no_key`, `timeout`.
-- `GET /api/data?kind=bootstrap` and `POST /api/data?kind=profile|contract|eval` store the demo user's data in Supabase through the service role key (server only).
+- `GET /api/data?kind=bootstrap` and `GET kind=metrics` and `POST /api/data?kind=profile|contract|deal|share|event|eval` store the demo user's data in Supabase through the service role key (server only). The profile carries the photo and plan; `deal` carries status, signed date, checklist and invoice.
 
 The app always works without them: any failure falls back to the built-in engine and seeded in-memory data, with an honest label.
 
-Tests: `npm test` (offline, no keys). Live checks: `npm run smoke:ai` (one Groq call) and `npm run smoke:data`.
+Tests: `npm test` (offline, no keys). Live checks: `npm run smoke:ai` (one Groq call), `npm run smoke:data`, and `npm run smoke:persist`, `smoke:deals`, `smoke:plan` (real database; each restores what it changes).
 
 ### If the database shows "Demo data (database offline)"
 

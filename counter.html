@@ -350,6 +350,7 @@ button.who{cursor:pointer;color:inherit;font:inherit}
 .iabtn.on{background:var(--grad);color:var(--on-grad);border-color:transparent}
 .issue.handled h3,.issue.handled .quote,.issue.handled .kv{opacity:.55}
 .main.static *{animation:none!important}
+.rempanel{position:fixed;right:clamp(16px,4vw,40px);top:calc(66px + env(safe-area-inset-top,0px));width:min(380px,calc(100% - 32px));z-index:45;padding:16px;animation:pop .25s both;max-height:70vh;overflow:auto;background:var(--bg);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))}
 /* dictation */
 .dict{position:relative;min-width:0}
 .dict textarea{padding-bottom:46px}
@@ -378,6 +379,7 @@ button.who{cursor:pointer;color:inherit;font:inherit}
 </div>
 <div id="coach"></div>
 <div id="modal"></div>
+<div id="rempanel"></div>
 <div id="toast" class="toast hide" role="status"></div>
 
 <script>
@@ -690,6 +692,12 @@ function analyze(msg, con){
     A.counter.rel=Math.max(Math.round(A.indicative*0.79/1000)*1000, ask0);
     A.counter.pres=(A.low!=null&&ask0>=A.low)?ask0:ask0+2000;
   }
+  // Barter: the cash-ask. Full scope at the reference rate, or a reduced scope (one Reel and up to two Stories) where the product counts toward the price.
+  if(T.barter && A.indicative>0){
+    const prod=T.productValue||0, st=Math.min(T.stories||0,2), reducedValue=38000+st*3000;
+    A.barterAsk={product:prod, share:prod&&A.indicative?Math.round(prod/A.indicative*100):null, cash:A.counter.max,
+      reducedLabel:'one Reel'+(st>1?' and two Stories':(st===1?' and one Story':'')), reducedCash:Math.max(reducedValue-prod,0), reducedValue};
+  }
   A.terms=buildTermChips(A);
   return A;
 }
@@ -727,7 +735,7 @@ function refusal(msg){
   if(/^\s*(?:please\s+)?(?:accept|sign|send|agree|submit|confirm|reply)\b/i.test(m) && m.length<400) return true;
   return /\b(?:accept|sign|send|agree to|reply to|submit)\b[^.\n]{0,70}\b(?:contract|offer|deal|agreement|it|this|the brand)\b[^.\n]{0,60}\b(?:for me|on my behalf|to the brand|back to|to them|to them for me)\b/i.test(m);
 }
-function special(msg){
+function special(msg, opts){
   const m=msg.trim();
   if(refusal(m)) return {kind:'refuse',badge:'Declined',title:'CreVa will not accept, sign or send for you.',
     body:['CreVa never accepts, signs or sends anything on your behalf. You make that call and you send it yourself.','What I can do: draft a reply for you to review, edit and send from your own account. Pick a mode in Negotiate and I will name the terms that drive the number so the counter does not read as just a bigger price.'],
@@ -747,12 +755,12 @@ function special(msg){
       'Three tests you can run: (1) over your next three posts, track non-follower reach and saves per 1K views against your baseline; (2) ask your last two brands which numbers they looked at; (3) quote your next offer at the top of CreVa\'s range and see whether the brand moves.'],
     conf:'Confidence: Low. No pricing data was given.',actions:[['OPEN RATE GROWTH','rategrowth']]};
   if(/walk away|should i (?:take|walk|say no|accept)/i.test(m)){
-    const amt=parseAmount(m);
+    const amt=parseAmount(m), floor=opts&&opts.minFee>0?opts.minFee:null; // floor = the creator's saved minimum fee for one Reel
     return {kind:'walk',badge:'Trade-off, your call',title:'Walking away is one option. It is not the only one.',
       body:['You said '+(amt?INR(amt):'the brand')+' is final. A final price fixes the fee. It does not fix what the fee buys. Two real options:',
         'Option A, keep the fee and shrink the scope: organic-only usage for 30 days, no exclusivity, one revision, no raw footage, net-30. You then decide whether '+(amt?INR(amt):'that number')+' pays for that smaller job.',
         'Option B, walk away: you keep your calendar for offers closer to your closed deals'+(amt?' ('+INR(amt)+' is below the lowest of your three, ₹42,000)':'')+', and you lose this brand\'s money and relationship.',
-        'What I do not know: the deliverables, your minimum acceptable fee, and whether you have other offers open. Those decide this more than the number does.'],
+        (floor?'Your saved minimum fee for one Reel is '+INR(floor)+'. '+(amt?(amt>=floor?INR(amt)+' is at or above it, so the fee clears your own floor and the real question is the scope.':INR(amt)+' is '+INR(floor-amt)+' below it, so by your own rule this offer does not clear your floor unless the scope shrinks.')+' ':'')+'What I do not know: the deliverables and whether you have other offers open. Those decide this more than the number does.':'What I do not know: the deliverables, your minimum acceptable fee, and whether you have other offers open. Those decide this more than the number does.')],
       conf:'Confidence: Low. No deliverables or terms were given.',actions:[['BUILD A COUNTER','negotiate']]};
   }
   return null;
@@ -812,7 +820,7 @@ async function ai(task, payload, schema, signalMs){
 const inArtifact=()=>!!(window.claude&&window.claude.use);
 const useApi=()=>!inArtifact()&&/^https?:/.test(location.protocol);
 class ApiFail extends Error{ constructor(code,retry){ super(code); this.code=code; this.retry=retry||null; } }
-const REASONS={rate_limited:'rate limit reached, try again in a minute',no_key:'live model is not configured',timeout:'live model took too long',offline:'no connection to the server',stopped:'stopped by you',upstream_error:'live model gave an unusable answer',bad_request:'the request was not accepted',too_large:'the text is too long',db_unavailable:'database offline'};
+const REASONS={rate_limited:'rate limit reached, try again in a minute',no_key:'live model is not configured',timeout:'live model took too long',offline:'no connection to the server',stopped:'stopped by you',upstream_error:'live model gave an unusable answer',bad_request:'the request was not accepted',too_large:'the text is too long',db_unavailable:'database offline',plan_limit:'the Free plan limit is reached',plan_locked:'this feature is part of the Pro plan'};
 function reasonOf(e){ if(e&&REASONS[e.code]) return REASONS[e.code]; const m=String(e&&e.message||e&&e.code||''); if(/unavailable|not_granted/.test(m)||(e&&e.code==='not_granted')) return 'live model not available in this view'; if(/timeout/.test(m)) return 'live model timed out'; if(/shape/.test(m)) return 'live model returned an unusable answer'; return 'live model call failed'; }
 S.mdl={provider:'Groq',model:''};
 S.net={count:12,median:54000,closed:[42000,51000,57000]}; // overwritten by the database when it answers
@@ -837,7 +845,7 @@ function aiContext(extra){
   const p=S.profile, ig=p.social.find(s=>s.id==='ig'), li=p.social.find(s=>s.id==='li');
   const n=s=>(s&&s.active&&typeof s.followers==='number'&&s.followers>=0)?s.followers:null;
   const opp={glow:'opp-glowskin',fin:'opp-fintechco',well:'opp-wellnessco'}[S.cur]||null;
-  return Object.assign({profileName:p.name,city:p.city,niche:p.niche,instagramFollowers:n(ig),linkedinFollowers:n(li),closedDeals:S.net.closed,networkCount:S.net.count,networkMedian:S.net.median,site:S.site||'',opportunityId:opp},extra||{});
+  return Object.assign({profileName:p.name,city:p.city,niche:p.niche,instagramFollowers:n(ig),linkedinFollowers:n(li),closedDeals:S.net.closed,networkCount:S.net.count,networkMedian:S.net.median,minFeeInr:Number(S.profile.minFee)>0?Math.round(Number(S.profile.minFee)):null,site:S.site||'',opportunityId:opp},extra||{});
 }
 function mergeAI(E, a){
   const A=JSON.parse(JSON.stringify(E));
@@ -893,14 +901,17 @@ async function runAnalysis(){
   const site=cleanSite(S.site); if(site===null){ const e=$('#err_site'); if(e) e.textContent='Enter a valid website, like brand.com.'; toast('Check the brand website.'); return; } S.site=site;
   S.special=null; S.A=null; S.C=null; S.refused=false;
   // Guardrails run first, in the browser, before any network call.
-  const sp=special(S.msg);
+  const sp=special(S.msg,{minFee:Number(S.profile.minFee)>0?Number(S.profile.minFee):null});
   if(sp){ S.special=sp; S.mode='rule'; render(); return; }
+  if(analysesLeft()<=0){ S.limitHit=true; S.A=null; S.mode=''; render(); return; } // Free plan: 2 analyses a month
+  S.limitHit=false;
   if(S.con&&S.con.trim()) upsertContract();
   const E=analyze(S.msg,S.con); E.pending=true; S.A=E; S.busy=true; S.ctrl=new AbortController(); render();
   try{
     S.A=await liveDeal(E,S.ctrl.signal); S.mode='live'; S.reason='';
     pushHistory(S.A);
-  }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); logFallback('deal',err); }
+  }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); logFallback('deal',err); if(err&&err.code==='plan_limit'){ S.limitHit=true; S.A=null; } }
+  if(!(S.mode==='fallback'&&S.reason==='stopped by you')) S.usage.dealAnalyses++;
   S.busy=false; S.ctrl=null; if(S.A) S.A.pending=false;
   if(S.route==='rate'||S.route==='breakdown'||S.route==='negotiate') render();
 }
@@ -917,8 +928,8 @@ function modeLabel(){
 function confBadge(c){ const cl={High:'ok',Medium:'acc',Low:'med'}[c]||'low'; return `<span class="sev ${cl}">${c}</span>`; }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.add('hide'),3200); }
 function pageHead(t,sub,right){ return `<div class="ph"><div><div class="eyebrow">${esc(NAMES[S.route]||'')}</div><h1>${t}</h1>${sub?`<p>${sub}</p>`:''}</div>${right||''}</div>`; }
-const NAMES={home:'Home',growth:'Growth',opps:'Opportunities',deals:'Deals',rate:'Rate Intelligence',breakdown:'Rate Intelligence',negotiate:'Rate Intelligence',contracts:'Contracts',payments:'Payments',checker:'Public rate checker',profile:'Profile'};
-const NAV=[['home','Home'],['growth','Growth'],['opps','Opportunities'],['deals','Deals'],['rate','Rate Intelligence'],['contracts','Contracts'],['payments','Payments']];
+const NAMES={home:'Home',growth:'Growth',opps:'Opportunities',deals:'Deals',rate:'Rate Intelligence',breakdown:'Rate Intelligence',negotiate:'Rate Intelligence',contracts:'Contracts',payments:'Payments',checker:'Public rate checker',profile:'Profile',ratecard:'Rate Card'};
+const NAV=[['home','Home'],['growth','Growth'],['opps','Opportunities'],['deals','Deals'],['rate','Rate Intelligence'],['ratecard','Rate Card'],['contracts','Contracts'],['payments','Payments']];
 const NAVMAP={breakdown:'rate',negotiate:'rate'};
 
 /* ============ views ============ */
@@ -995,7 +1006,7 @@ V.home=()=>{
   <div style="display:flex;gap:10px;align-items:center"><button class="round" data-a="checker" aria-label="Public rate checker">${ic('help',20)}</button><button class="btn p" data-a="go" data-r="rate">${ic('plus',16)} Analyze New Offer</button></div></div>
 <div class="cells c4">
   ${st('Closed value this month','₹1.42L','+18% vs September','wallet',bars([4,6,5,9]))}
-  ${st('Active deals','3','GlowSkin, StudyKart, WellnessCo','doc','')}
+  ${st('Active deals',String(S.deals.filter(isOpenDeal).length),S.deals.filter(isOpenDeal).map(d=>d.brand).join(', ')||'None','doc','')}
   ${st('Average deal value','₹52K','Across deals closed this month','rupee','')}
   ${st('Open contract risks',String(openAll),withOpen?`In ${withOpen} contract${withOpen>1?'s':''}`:'All issues handled','alert','')}
 </div>
@@ -1005,7 +1016,7 @@ ${checklist()}
   <div class="card pad"><div class="h3">Needs your attention <a data-a="go" data-r="opps">View all ${ic('arrow',15)}</a></div>
     ${orow('GlowSkin','#FF8FA3','GlowSkin','1 Reel + 3 Stories','Beauty · Posted 2 days ago','₹30,000',gn.high?'high':(gn.open?'amber':'ok'),gn.open?gn.open+' contract risk'+(gn.open>1?'s':''):'All risks handled',gn.open?'Review':'View',gn.open?'p':'','data-a="open-contract" data-id="glow"')}
     ${orow('F','#1B1118','FintechCo','1 LinkedIn post + 1 newsletter','Finance · Posted 4 days ago','₹45,000','amber','Counter-offer ready','Open','p','data-a="open-counter" data-id="fin"')}
-    ${orow('W','#3DB474','WellnessCo','2 Reels + 4 Stories','Wellness · Posted 9 days ago','₹22,000','amber','Payment 6 days late','Chase','','data-a="go" data-r="payments"')}
+    ${remList().filter(x=>x.kind==='late').slice(0,2).map(x=>orow(brandInit(x.d.brand),brandBg(x.d.brand),esc(x.d.brand),esc(x.d.deliverables),'Invoice overdue',INR(payOf(x.d).invoiced-payOf(x.d).received),'amber',x.days+' day'+(x.days===1?'':'s')+' late','Chase','','data-a="rem-chase" data-id="'+esc(x.d.id)+'"')).join('')}
   </div>
   <div class="card pad"><div class="h3">Your rate growth <a data-a="go" data-r="growth">Open growth ${ic('arrow',15)}</a></div>
     <div class="grid g4">
@@ -1061,6 +1072,7 @@ V.rate=()=>{
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="analyze" ${S.busy?'disabled':''}>${S.busy?'Analysing with the live model...':'Analyze This Offer'} ${ic('arrow',16)}</button>${S.busy?`<button class="btn" data-a="stop">Stop</button>`:''}
         <details><summary>Final-check prompts</summary><div class="chips" style="margin-top:10px">${EVAL_PROMPTS.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="evalp" data-i="${i}">${esc(p)}</button>`).join('')}</div></details></div>
       ${S.mode?`<div class="status" style="margin-top:0">${modeLabel()}</div>`:''}
+      ${planOf()==='Free'?`<div class="status" style="margin-top:0"><span class="dot amber"></span>Free plan: ${Math.min(S.usage.dealAnalyses,FREE_ANALYSES)} of ${FREE_ANALYSES} analyses used this month.</div>`:''}
     </div>
     <div class="card pad stack"><div><label class="f" for="con">3. Paste the contract, or upload it</label>
       ${S.file?`<div class="filec">${ib('contract','sq')}<div style="flex:1;min-width:0"><b class="mono" style="font-size:12.5px;overflow-wrap:anywhere">${esc(S.file)}</b></div></div>`:''}
@@ -1068,7 +1080,9 @@ V.rate=()=>{
       <label class="drop" for="upl">${ic('upload',28)}<span><span style="color:var(--fg);font-weight:600">Click to upload a text file</span><br><small id="uplnote">TXT or MD. For a PDF, paste its text above.</small></span></label>
       <input type="file" id="upl" class="hide" accept=".txt,.md,.pdf"></div></div>`;
   let res='';
-  if(sp){
+  if(S.limitHit){
+    res=`<div class="sec"><div class="card pad stack" style="border-color:var(--accent)"><span class="ib">${ic('lock',22)}</span><h3 style="font-size:20px;font-weight:700">You have used the 2 analyses included in the Free plan this month.</h3><p class="muted">The rate checker stays free. Pro adds unlimited analysis, contract review, negotiation, the deal tracker and Post Autopsy.</p><p class="note acc">${ic('alert',18)}<span><b>Prototype.</b> No payment is taken. Switching plan only changes what you can use here.</span></p><div><button class="btn p" data-a="plan-set" data-p="Pro">Switch to Pro (demo)</button></div></div></div>`;
+  } else if(sp){
     res=`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${sp.kind==='refuse'||sp.kind==='flop'?'acc':'low'}">${esc(sp.badge)}</span><span class="muted small">${esc(sp.conf)}</span></div>
       <h3 style="font-size:21px;font-weight:700;text-wrap:balance">${esc(sp.title)}</h3>
@@ -1094,7 +1108,7 @@ V.rate=()=>{
       (A.risks.length?`<div class="card">${A.risks.map(r=>`<div class="rrow" data-a="go" data-r="contracts" role="button" tabindex="0">${sevPill(r.sev)}${stTag(r.key)}<div class="t"><b>${esc(r.title)}</b><span>${esc(r.line)}</span></div>${ic('arrow',18)}</div>`).join('')}</div>`:`<div class="card pad"><span class="sev ok">Clear</span> <span style="margin-left:8px">No material risks found in the text provided.</span></div>`)}</div>
     <div class="sec"><h2>Unknown</h2><div class="card pad" style="border-color:var(--accent)"><p style="font-weight:600;margin-bottom:8px">What CreVa could not determine from what it was given</p>${pend?skel(2):`<ul style="margin:0;padding-left:18px;display:grid;gap:4px">${A.unknown.map(u=>`<li>${esc(u)}</li>`).join('')||'<li>Nothing material is missing from the text provided.</li>'}</ul>`}</div></div>
     ${A.escalate&&!pend?`<div class="note warn" style="margin-top:18px">${ic('alert',18)}<span><b>CreVa explains commercial consequences, not legal validity. Consider professional legal review before signing.</b> Why: ${esc(A.escalateWhy.join('; '))}.</span></div>`:''}${A.taxNote&&!pend?`<div class="note" style="margin-top:12px">${ic('alert',18)}<span>The text mentions tax (GST or TDS). Check how it applies with a CA.</span></div>`:''}
-    <div class="sec" style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="go" data-r="breakdown" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>See the breakdown</button><button class="btn" data-a="review-current" ${pend?'disabled':''}>Review contract</button><button class="btn" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>Build a counter</button></div>
+    <div class="sec" style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="go" data-r="breakdown" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>See the breakdown</button><button class="btn" data-a="review-current" ${pend?'disabled':''}>Review contract</button><button class="btn" data-a="go" data-r="negotiate" ${A.rangeUnavailable||pend?'disabled':''}>${A.T.barter?'Draft a cash ask':'Build a counter'}</button></div>
     <p class="muted small" style="margin-top:14px">CreVa gives estimates with evidence behind them. It does not accept, sign or send anything for you.</p>`;
   } else {
     res=`<div class="sec"><div class="note">${ic('spark',18)}<span>Results appear here. The GlowSkin offer is loaded; press Analyze This Offer to read it, or paste your own.</span></div></div>`;
@@ -1186,6 +1200,7 @@ function setIssue(k,s){
   const n=cCounts(c); toast(n.open?`${n.open} left to review for ${c.brand}`:`All ${c.brand} issues are handled`);
 }
 V.contracts=()=>{
+  if(!planAllows('contract')) return lockView('Contracts','Contract review is part of the Pro plan.');
   if(!S.cid||!S.contracts.find(x=>x.id===S.cid)||!S.A){
     const rows=S.contracts.map(c=>{ const n=cCounts(c), stt=cStatus(c);
       return `<div class="card opp"><div class="top"><span class="logo lg" style="background:${brandBg(c.brand)}">${esc(brandInit(c.brand))}</span>
@@ -1221,7 +1236,7 @@ V.contracts=()=>{
   <div class="sec"><h2>What's missing</h2><div class="card">${miss.length?`<div class="tw"><table>${miss.map(m=>`<tr><td style="width:230px"><b>${esc(m.term)}</b></td><td>${esc(m.why)}</td></tr>`).join('')}</table></div>`:'<div class="pad">Nothing standard is absent.</div>'}</div><p class="muted small" style="margin-top:8px">Absent terms count as findings. A contract that is silent leaves the point open to dispute.</p></div>
   ${A.escalate?`<div class="note warn" style="margin-top:20px">${ic('alert',18)}<span><b>I cannot determine the legal effect of this clause. Consider professional legal review before signing.</b> Why: ${esc((A.escalateWhy||[]).join('; '))}.</span></div>`:''}${A.taxNote?`<div class="note" style="margin-top:12px">${ic('alert',18)}<span>The text mentions tax (GST or TDS). Check how it applies with a CA.</span></div>`:''}
   <div class="status">${S.cMode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' wrote the plain-language readings.':(S.cMode==='fallback'?'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+'). Readings are from built-in templates.':'')}</div>
-  <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||!A.counter.max?'disabled':''}>Build a counter from these</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
+  <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate" ${A.rangeUnavailable||!A.counter.max?'disabled':''}>Build a counter from these</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
 };
 
 /* negotiate */
@@ -1248,7 +1263,8 @@ const MODES={max:{n:'Maximize value',sub:(A)=>`Rights preserved. Offers a reduce
 
 V.negotiate=()=>{
   const A=S.A;
-  if(A&&A.T.barter) return `${pageHead('Negotiate','')}<div class="note">This is a barter offer, so there is no cash fee to counter. Ask for a cash fee in your reply, and treat the product as a bonus.</div><p style="margin-top:12px"><button class="btn p" data-a="go" data-r="rate">Back to deal intelligence</button></p>`;
+  if(!planAllows('negotiate')) return lockView('Negotiate','Negotiation modes and drafts are part of the Pro plan.');
+  if(A&&A.T.barter&&A.barterAsk) return barterView(A);
   if(!A||A.rangeUnavailable||!A.counter||!A.counter.max) return `${pageHead('Negotiate','')}<div class="note">Analyze a priced offer in Deal Intelligence first.</div><p style="margin-top:12px"><button class="btn p" data-a="go" data-r="rate">Open Deal Intelligence</button></p>`;
   const brand=brandOf();
   const price={max:A.counter.max,rel:A.counter.rel,pres:A.counter.pres};
@@ -1267,9 +1283,28 @@ V.negotiate=()=>{
   <div class="sec"><h2>Ask CreVa to change the draft</h2><div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" id="instr" data-bind="instr" placeholder="For example: make it shorter, or warmer" style="flex:1 1 240px" value="${esc(S.instr)}"><button class="btn" data-a="refine">Rewrite</button></div>
     ${S.refused?`<div class="note acc" style="margin-top:10px"><b>CreVa will not accept, sign or send for you.</b> I can draft a reply for you to send yourself. Use the draft above, edit it, then press Approve and copy.</div>`:''}</div>`;
 };
-function setDraft(){ const A=S.A; if(!A||!A.counter||!A.counter.max)return; const brand=brandOf(); S.draft=draftFor(S.cMode,A,brand); S.draftDirty=false; }
+// Barter: gifting versus paid. The first ask for money, as a draft the creator edits and sends herself.
+function barterDraft(A,brand){
+  const B=A.barterAsk, dl=A.delivWords;
+  return 'Thanks for thinking of me for this'+(B.product?', and for the product (valued at '+INR(B.product)+')':'')+'. '+dl.charAt(0).toUpperCase()+dl.slice(1)+' is paid work, so I cannot take it on for product alone'+(B.share?'. The product covers about '+B.share+'% of what that scope is worth at my rates':'')+'. My cash rate for '+dl+' is '+INR(B.cash)+'. If the budget is tighter, I can do '+B.reducedLabel+' for '+INR(B.reducedCash)+' in cash plus the product. Happy to talk through which works for you.\n\n'+DISC;
+}
+function barterView(A){
+  const B=A.barterAsk, brand=brandOf(), hasDisc=/paid partnership/i.test(S.draft);
+  const opt=(t,price,d)=>`<div class="mode" style="cursor:default"><b>${t}</b><span class="pr num">${price}</span><span class="d">${d}</span></div>`;
+  return `${pageHead('Negotiate','Gifting versus paid, and your first ask for money, drafted for you to edit and send.')}
+  <div class="note acc">${ic('spark',18)}<span><b>A product is a gift, not a fee.</b> ${B.product?'This product is worth '+INR(B.product)+', about '+B.share+'% of what the same scope is worth at your reference rates ('+INR(A.indicative)+'). ':''}It does not pay for the time, and "exposure" is not a payment term.</span></div>
+  <div class="modes" style="margin-top:14px">${opt('Full scope, paid in cash',INR(B.cash),'The whole package at your reference rate.')}${opt('Reduced scope',INR(B.reducedCash)+' + product',B.reducedLabel.charAt(0).toUpperCase()+B.reducedLabel.slice(1)+', with the product counted toward '+INR(B.reducedValue)+'.')}${opt('Product only','Not recommended','Only if you would use the product and the scope is one small post.')}</div>
+  <div class="sec"><h2>Draft to ${esc(brand)}, editable</h2>
+    <textarea id="draft" rows="9" data-bind="draft" aria-label="Draft message">${esc(S.draft)}</textarea>
+    <div class="status"><span class="dot"></span>Built-in template. Barter drafts are not rewritten by the live model.</div>
+    ${hasDisc?'':`<p class="note warn" style="margin-top:10px">This draft does not mention the paid partnership label. Add it before you send.</p>`}
+  </div>
+  <div class="sec"><div class="card pad stack"><div class="note acc"><b>CreVa will not send this. You send it.</b> There is no send button in CreVa. Copy the draft and send it from your own account.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="copy-draft">Approve and copy</button></div></div></div>`;
+}
+function setDraft(){ const A=S.A; if(!A||!A.counter||!A.counter.max)return; const brand=brandOf(); S.draft=(A.T.barter&&A.barterAsk)?barterDraft(A,brand):draftFor(S.cMode,A,brand); S.draftDirty=false; }
 async function aiDraft(extra){
-  const A=S.A; if(!A||!A.counter||!A.counter.max||S.nbusy) return; S.nbusy=true; softRender();
+  const A=S.A; if(!A||!A.counter||!A.counter.max||S.nbusy||A.T.barter) return; S.nbusy=true; softRender();
   const mode=S.cMode, price={max:A.counter.max,rel:A.counter.rel,pres:A.counter.pres}[mode], base=draftFor(mode,A,'');
   try{
     let d='';
@@ -1292,37 +1327,71 @@ async function aiDraft(extra){
 }
 
 V.deals=()=>{
-  const act=[['glow','GlowSkin','#FF8FA3','High','high','₹58,000','1 Reel + 3 Stories','In progress','Reel due 18 Oct',45],['study','StudyKart','#1B1118','Fair','ok','₹40,000','1 Reel + 1 Post','In progress','Reel due 24 Oct',40],['well','WellnessCo','#3DB474','Barter','med','₹22,000','2 Reels + 4 Stories','Awaiting payment','6 days late',85]];
-  const done=[['d1','Ledgerly','#2A1B4D','Paid','ok','₹57,000','1 Reel + 2 Stories','Paid','Closed Aug',100],['d2','Northdesk','#14324A','Paid','ok','₹51,000','1 LinkedIn post','Paid','Closed Jul',100],['d3','Calmbase','#3C2A17','Paid','ok','₹42,000','1 Reel','Paid','Closed Jun',100]];
-  const list=S.dealTab==='active'?act:done;
-  const cards=list.map(d=>`<button class="dcard" data-a="deal" data-id="${d[0]}" aria-pressed="${S.dealId===d[0]}"><div class="tp"><span class="logo" style="background:${d[2]}">${d[1][0]}</span><div><b>${d[1]}</b> <span class="sev ${d[4]}">${d[3]}</span><div class="muted small">${d[6]}</div></div><b class="num" style="font-size:17px">${d[5]}</b></div><div class="small"><span style="color:var(--accent)">${d[7]}</span> <span class="muted">· ${d[8]}</span></div><div class="prog"><i style="width:${d[9]}%"></i></div></button>`).join('');
-  return `${pageHead('Deals','Everything you have committed to, in one place.')}
+  if(!planAllows('tracker')) return lockView('Deals','The deal tracker is part of the Pro plan.');
+  const open=S.deals.filter(isOpenDeal), done=S.deals.filter(d=>!isOpenDeal(d));
+  const list=S.dealTab==='active'?open:done;
+  if(!list.some(d=>d.id===S.dealId)) S.dealId=list.length?list[0].id:'';
+  const prog=d=>d.reqs.length?Math.round(d.reqs.filter(r=>r.done).length/d.reqs.length*100):({Paid:100,'Awaiting payment':85,Signed:55,Accepted:35,'In progress':40,'Needs review':10})[d.status]||30;
+  const cards=list.map(d=>{ const tag=BRAND_TAG[d.brand], n=dueIn(d);
+    return `<button class="dcard" data-a="deal" data-id="${esc(d.id)}" aria-pressed="${S.dealId===d.id}"><div class="tp"><span class="logo" style="background:${brandBg(d.brand)}">${esc(brandInit(d.brand))}</span><div><b>${esc(d.brand)}</b> ${tag?`<span class="sev ${tag[1]}">${tag[0]}</span>`:''}<div class="muted small">${esc(d.deliverables)}</div></div><b class="num" style="font-size:17px">${d.closed!=null?INR(d.closed):''}</b></div>
+      <div class="small"><span style="color:var(--accent)">${esc(d.status)}</span> <span class="muted">${n==null?'':(n<0?'· '+(-n)+' day'+(n===-1?'':'s')+' late':'· due in '+n+' day'+(n===1?'':'s'))}</span></div><div class="prog"><i style="width:${prog(d)}%"></i></div></button>`; }).join('');
+  const d=dealById(S.dealId);
+  return `${pageHead('Deals','Everything you have committed to, in one place.',`<button class="btn" data-a="deals-csv">${ic('download',15)} Export CSV</button>`)}
   <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="${S.dealTab==='active'}" data-a="dtab" data-t="active">Active</button><button class="tab" role="tab" aria-selected="${S.dealTab==='done'}" data-a="dtab" data-t="done">Completed</button></div>
-  <div class="dcards">${cards}</div>
-  ${S.dealId==='glow'&&S.dealTab==='active'?dealDetail():(S.dealId==='well'?`<div class="card pad" style="margin-top:16px"><b>WellnessCo · ₹22,000</b><p class="muted" style="margin:6px 0 12px">Delivered. Payment is 6 days late.</p><button class="btn p" data-a="go" data-r="payments">Open payments</button></div>`:`<div class="note" style="margin-top:16px">${ic('doc',18)}<span>Select GlowSkin in Active to see a full deal workspace.</span></div>`)}`;
+  ${list.length?`<div class="dcards">${cards}</div>`:`<div class="note">${ic('doc',18)}<span>No ${S.dealTab==='active'?'active':'completed'} deals yet.</span></div>`}
+  ${d?dealDetail(d):''}`;
 };
-function dealDetail(){
-  const tg=(t,c)=>`<span class="sev ${c}">${t}</span>`;
-  const rq=(icon,name,tag)=>`<tr><td><div class="tc">${ic(icon,20)}<span>${name}</span></div></td><td>${tag}</td></tr>`;
-  const kv=(icon,k,v)=>`<div class="kvr">${ic(icon,18)}<span>${k}</span><span>${v}</span></div>`;
-  return `<div class="deal2"><div class="card pad"><div class="h3"><span>GlowSkin <span class="muted" style="font-weight:500">· Deal workspace</span></span></div>
-    <div class="ladder"><div><div class="lab">Opening offer</div><div class="mid num">₹30,000</div></div><div><div class="lab">Your counter</div><div class="mid num">₹68,000</div></div><div><div class="lab">Closed at</div><div class="mid num">₹58,000</div><div class="delta">+₹28,000 vs opening offer (+93%)</div></div></div>
-    <p class="muted small" style="margin:10px 0 6px">CreVa priced the package at ₹62,000 to ₹70,000, you countered at ₹68,000 and closed at ₹58,000 with the rights cut back.</p>
-    <div class="tw"><table><tr><th>Requirement</th><th>Status</th></tr>
-      ${rq('contract','Contract',tg('Signed, 2 Oct','ok'))}${rq('image','Reel',tg('Due 18 Oct','low'))}${rq('image','Stories',tg('Due 20 Oct','low'))}${rq('growth','Proof report',tg('Pending','med'))}${rq('doc','Invoice',tg('Sent 21 Oct','ok'))}${rq('pay','Payment',tg('Due 20 Nov','low'))}</table></div></div>
-    <div class="col"><div class="card pad"><div class="h3">Agreed terms</div>${kv('globe','Usage','30-day organic')}${kv('shield','Exclusivity','None')}${kv('refresh','Revisions','1 round')}${kv('pay','Payment terms','Net-30')}</div>
-    <div class="card pad"><div class="h3">Documents</div>
-      ${[['glowskin_agreement.pdf','Added 2 days ago'],['creative_guidelines.pdf','Added 3 days ago'],['brand_assets.zip','Added 3 days ago']].map(d=>`<div class="kvr">${ic('doc',18)}<span style="font-weight:500;overflow-wrap:anywhere">${d[0]}<br><small class="muted">${d[1]}</small></span><span></span></div>`).join('')}
-      <button class="btn p" style="width:100%;margin-top:6px" data-a="go" data-r="payments">Open Payments ${ic('arrow',16)}</button></div></div></div>`;
+
+function dealDetail(d){
+  const t=d.terms||{}, p=payOf(d), inv=t.invoice, n=dueIn(d), sf=S.signForm&&S.signForm.id===d.id?S.signForm:null, iv=S.invForm&&S.invForm.id===d.id?S.invForm:null;
+  const tg=(txt,c)=>`<span class="sev ${c}">${esc(txt)}</span>`;
+  const kv=(icon,k,v)=>v?`<div class="kvr">${ic(icon,18)}<span>${k}</span><span>${esc(v)}</span></div>`:'';
+  const ladder=d.opening!=null&&d.counter!=null&&d.closed!=null?`<div class="ladder"><div><div class="lab">Opening offer</div><div class="mid num">${INR(d.opening)}</div></div><div><div class="lab">Your counter</div><div class="mid num">${INR(d.counter)}</div></div><div><div class="lab">Closed at</div><div class="mid num">${INR(d.closed)}</div><div class="delta">${d.closed>=d.opening?'+':'-'}${INR(Math.abs(d.closed-d.opening))} vs opening offer (${d.closed>=d.opening?'+':'-'}${Math.round(Math.abs(d.closed-d.opening)/d.opening*100)}%)</div></div></div>`:'';
+  const story=d.id==='glow'?`<p class="muted small" style="margin:10px 0 6px">CreVa priced the package at ₹62,000 to ₹70,000, you countered at ₹68,000 and closed at ₹58,000 with the rights cut back.</p>`:'';
+  const status=t.signedAt?tg('Signed '+fmtD(t.signedAt),'ok'):(t.acceptedAt?tg('Accepted '+fmtD(t.acceptedAt),'acc'):tg(d.status,'low'));
+  const hist=(S.hist||[]).some(h=>String(h.brand||'').toLowerCase()===d.brand.toLowerCase());
+  const signForm=sf?`<div class="card pad stack" style="margin-bottom:14px;border-color:var(--accent)"><b>${sf.kind==='signed'?'Mark as signed':'Mark as accepted'}</b>
+    <div class="fgrid"><div><label class="f" for="sf_a">Agreed fee, ₹</label><input type="number" id="sf_a" data-sf="amount" value="${esc(sf.amount)}" min="0"></div><div><label class="f" for="sf_d">Date</label><input type="date" id="sf_d" data-sf="date" value="${esc(sf.date)}"></div></div>
+    <p class="muted small">${hist?'This brand was analysed in CreVa, so the fee counts toward CreVa-Assisted Deal Value Closed.':'This brand has not been analysed in CreVa, so the fee will not count toward CreVa-Assisted Deal Value Closed.'} CreVa does not sign or accept anything for you. This only records what you did.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn p" data-a="sign-save">Record it</button><button class="btn" data-a="sign-cancel">Cancel</button></div></div>`:'';
+  const invForm=iv?`<div class="card pad stack" style="margin-bottom:14px;border-color:var(--accent)"><b>Create an invoice</b>
+    <div class="fgrid"><div><label class="f" for="iv_no">Invoice number</label><input type="text" id="iv_no" data-ivf="no" data-nomic="1" value="${esc(iv.no)}"></div><div><label class="f" for="iv_d">Issue date</label><input type="date" id="iv_d" data-ivf="issuedAt" value="${esc(iv.issuedAt)}"></div>
+    <div><label class="f" for="iv_a">Amount, ₹</label><input type="number" id="iv_a" data-ivf="amount" value="${esc(iv.amount)}" min="0"></div><div><label class="f" for="iv_g">GST, %</label><input type="number" id="iv_g" data-ivf="gstPct" value="${esc(iv.gstPct)}" min="0" max="28"></div>
+    <div><label class="f" for="iv_n">Payment due in, days</label><input type="number" id="iv_n" data-ivf="days" value="${esc(iv.days)}" min="0"></div></div>
+    <p class="muted small">${S.profile.gst==='Registered'?'GST is pre-filled at 18% because your profile says you are registered.':'GST is 0% because your profile says you are not registered. Change it in Profile if that is wrong.'} CreVa drafts the invoice. You review it and send it yourself.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn p" data-a="inv-save">Create invoice</button><button class="btn" data-a="inv-cancel">Cancel</button></div></div>`:'';
+  const reqRows=d.reqs.map((r,i)=>`<tr><td><div class="tc">${ic(r.done?'check':'doc',20)}<span>${esc(r.name)}</span></div></td><td>${r.done?tg('Done','ok'):tg(r.status||'Pending',/pending/i.test(r.status||'')?'med':'low')}</td><td><input type="text" data-rq="${i}" data-nomic="1" value="${esc(r.proof)}" placeholder="Link or note" aria-label="Proof for ${esc(r.name)}" style="min-width:140px"></td><td><button class="btn sm" data-a="rq-toggle" data-i="${i}">${r.done?'Undo':'Mark done'}</button></td></tr>`).join('');
+  return `<div class="deal2"><div class="card pad"><div class="h3"><span>${esc(d.brand)} <span class="muted" style="font-weight:500">· Deal workspace</span></span><span style="display:flex;gap:8px;flex-wrap:wrap">${status}</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${!t.signedAt?`<button class="btn sm p" data-a="sign-open" data-kind="signed">${ic('check',14)} Mark as signed</button>`:''}${!t.signedAt&&!t.acceptedAt?`<button class="btn sm" data-a="sign-open" data-kind="accepted">Mark as accepted</button>`:''}</div>
+    ${signForm}${ladder}${story}
+    <h2 style="margin-top:16px">Deliverables and proof</h2>
+    ${d.reqs.length?`<div class="tw"><table><tr><th>Item</th><th>Status</th><th>Proof</th><th></th></tr>${reqRows}</table></div>`:`<div class="note">${ic('doc',18)}<span>No checklist recorded for this deal.</span></div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn p" data-a="proof-download" data-id="${esc(d.id)}">${ic('download',15)} Download proof pack</button><button class="btn" data-a="proof-preview" data-id="${esc(d.id)}">Preview</button></div></div>
+   <div class="col"><div class="card pad"><div class="h3">Agreed terms</div>${kv('globe','Usage',t.usage)}${kv('shield','Exclusivity',t.exclusivity)}${kv('refresh','Revisions',t.revisions)}${kv('pay','Payment terms',t.payment)}${!(t.usage||t.exclusivity||t.revisions||t.payment)?'<div class="muted small">No terms recorded.</div>':''}</div>
+    <div class="card pad"><div class="h3">Invoice and payment</div>
+      ${invForm}
+      ${inv?`<div class="kvr">${ic('doc',18)}<span>Invoice</span><span>${esc(inv.no)}</span></div><div class="kvr">${ic('wallet',18)}<span>Total</span><span>${INR(inv.total)}${inv.gstPct>0?' incl. GST '+inv.gstPct+'%':''}</span></div><div class="kvr">${ic('calendar',18)}<span>Due</span><span>${esc(fmtD(inv.dueAt))}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px"><button class="btn sm p" data-a="inv-download" data-id="${esc(d.id)}">${ic('download',14)} Download invoice</button><button class="btn sm" data-a="inv-preview" data-id="${esc(d.id)}">Print preview</button></div>`
+        :(!iv?`<p class="muted small" style="margin-bottom:10px">No invoice yet.</p><button class="btn sm p" data-a="inv-open" data-id="${esc(d.id)}">Create invoice</button>`:'')}
+      <div class="kvr" style="margin-top:10px">${ic('clock',18)}<span>Payment</span><span>${esc(p.status)}${n!=null?(n<0?' · '+(-n)+' days late':' · due in '+n+' days'):''}</span></div>
+      <div class="kvr">${ic('wallet',18)}<span>Received</span><span>${INR(p.received)} of ${INR(p.invoiced||p.expected)}</span></div>
+      ${p.invoiced>p.received?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn sm p" data-a="mark-received" data-id="${esc(d.id)}">Mark as received</button>${n!=null&&n<0?`<button class="btn sm" data-a="rem-chase" data-id="${esc(d.id)}">Chase</button>`:''}</div>`:''}</div>
+    <button class="btn p" style="width:100%" data-a="go" data-r="payments">Open Payments ${ic('arrow',16)}</button></div></div>`;
 }
 
 V.payments=()=>{
+  if(!planAllows('tracker')) return lockView('Payments','Payment tracking is part of the Pro plan.');
+  const openD=S.deals.filter(isOpenDeal), pays=openD.map(d=>({d,p:payOf(d),n:dueIn(d)}));
+  const sum=k=>pays.reduce((s,x)=>s+(x.p[k]||0),0);
+  const dueNext=pays.filter(x=>x.n!=null&&x.n>=0).sort((a,b)=>a.n-b.n)[0], late=pays.filter(x=>x.n!=null&&x.n<0);
   const st=(icon,l,v,small)=>`<div>${ib(icon)}<div><div class="lab">${l}</div><div class="mid ${small?'':'num'}" ${small?'style="font-size:18px;color:var(--accent)"':''}>${v}</div></div></div>`;
+  const chase=S.chaseId?dealById(S.chaseId):null;
   return `${pageHead('Payments','What you are owed and when.')}
-  <div class="cells">${st('wallet','Expected','₹58,000')}${st('doc','Invoiced','₹58,000')}${st('download','Received','₹0')}</div>
-  <div class="cells" style="margin-top:16px">${st('calendar','Due in','14 days')}${st('clock','Status','Awaiting payment',1)}${st('deals','Deal','GlowSkin')}</div>
-  <div class="sec"><h2>Overdue</h2><div class="card pad"><div class="orow" style="cursor:default;margin:0"><span class="dot amber"></span><div class="t"><b>WellnessCo <span class="num">₹22,000</span></b><span>6 days late</span></div><button class="btn sm p" data-a="chase">Chase</button></div></div>
-  ${S.chase?`<div class="card pad stack" style="margin-top:14px"><div class="lab">Reminder draft, editable</div><textarea id="chased" rows="6" data-bind="chaseDraft">${esc(S.chaseDraft)}</textarea><div class="note acc"><span><b>CreVa will not send this. You send it.</b></span></div><div><button class="btn p" data-a="copy-chase">Approve and copy</button></div></div>`:''}</div>`;
+  <div class="cells">${st('wallet','Expected',INR(sum('expected')))}${st('doc','Invoiced',INR(sum('invoiced')))}${st('download','Received',INR(sum('received')))}</div>
+  <div class="cells" style="margin-top:16px">${st('calendar','Next due',dueNext?'in '+dueNext.n+' day'+(dueNext.n===1?'':'s'):'Nothing due',1)}${st('alert','Overdue',late.length?late.length+' invoice'+(late.length>1?'s':''):'None',1)}${st('deals','Open deals',String(openD.length))}</div>
+  <div class="sec"><h2>Invoices</h2><div class="card pad">${pays.length?pays.map(x=>`<div class="orow" style="cursor:default;margin-bottom:10px"><span class="logo" style="background:${brandBg(x.d.brand)}">${esc(brandInit(x.d.brand))}</span><div class="t"><b>${esc(x.d.brand)} <span class="num">${INR(x.p.invoiced||x.p.expected)}</span></b><span>${esc(x.p.status)}${x.n!=null?(x.n<0?' · '+(-x.n)+' days late':' · due in '+x.n+' days'):''}</span></div>
+      ${x.p.invoiced>x.p.received?`<button class="btn sm" data-a="mark-received" data-id="${esc(x.d.id)}">Mark received</button>`:`<button class="btn sm" data-a="inv-open-go" data-id="${esc(x.d.id)}">Create invoice</button>`}${x.n!=null&&x.n<0?`<button class="btn sm p" data-a="rem-chase" data-id="${esc(x.d.id)}">Chase</button>`:''}</div>`).join(''):'<div class="muted">No open invoices.</div>'}
+  ${chase?`<div class="card pad stack" style="margin-top:14px"><div class="lab">Reminder draft for ${esc(chase.brand)}, editable</div><textarea id="chased" rows="6" data-bind="chaseDraft">${esc(S.chaseDraft)}</textarea><div class="note acc"><span><b>CreVa will not send this. You send it.</b></span></div><div><button class="btn p" data-a="copy-chase">Approve and copy</button></div></div>`:''}</div></div>`;
 };
 
 /* growth */
@@ -1336,7 +1405,7 @@ V.growth=()=>{
     <p style="max-width:70ch">Your current estimated rate for a Reel is ₹38,000. Based on comparable creators in your band, ₹46,000 to ₹52,000 is reachable. Your largest gap is non-follower reach: yours is 67%, comparable creators closing at that rate are at 78%. Across your last five sponsored posts, those above 70% non-follower reach drew 1.6 times your median inbound interest.</p>
     <div class="note acc">These are signals associated with stronger pricing across a cohort. They are not a lever: CreVa cannot say that raising one of them will raise your rate.</div></div>
     <div class="sec"><h2>Experiment for your next three posts</h2><div class="card pad stack"><p>Make each of the next three Reels open with a problem a non-follower would recognise, and end with something worth saving (a checklist, a script, a template). Keep your posting time and length close to your usual.</p><p>Record non-follower reach and saves per 1K views after seven days for each. Your baseline is 67% and 18.</p><p class="muted">Three posts is too few to prove anything. Treat the result as one more data point, not an answer.</p></div></div>`;
-  if(S.tab==='autopsy') body=autopsyView();
+  if(S.tab==='autopsy') body=planAllows('autopsy')?autopsyView():lockInline('Post Autopsy is part of the Pro plan.');
   return `${pageHead('Growth','Your numbers, read the way a brand reads them.')}${tabs}${body}`;
 };
 function autopsyView(){
@@ -1389,6 +1458,7 @@ V.checker=()=>{
     <div class="status" style="margin-top:10px">${S.chkMode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' wrote the narrowing advice.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div>
     <div style="margin-top:10px"><button class="btn sm" data-a="copy-check">Copy as text</button></div></div>
     <div class="sec"><h2>What would narrow this range</h2><div class="card pad"><ul style="margin:0;padding-left:18px;display:grid;gap:6px">${(o.narrowAI||o.narrow).map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div></div>
+    <div class="sec">${S.shared?`<div class="note acc">${ic('check',18)}<span>Shared anonymously. Thank you.</span></div>`:`<div class="card pad stack"><label class="consent"><input type="checkbox" id="share_ok"><span>Share this check anonymously to help build fair-price data.</span></label><div class="muted small">Shared: platform, follower range, deliverable, usage, exclusivity and the range shown. Never shared: your name, any brand, your exact follower count. Nothing is shared unless you tick the box and press Share.</div><div><button class="btn" data-a="share-check">Share anonymously</button></div></div>`}</div>
     <div class="sec"><div class="card pad" style="border-color:var(--accent);display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between"><b style="font-size:16px">Paste the actual offer to see whether it's fairly priced</b><button class="btn p" data-a="exit-checker">Open Deal Intelligence</button></div></div>`;
   }
   return `<div class="ph"><div><div class="eyebrow">Free, no signup</div><h1>What is this deal worth?</h1><p>Answer a few questions and get an indicative range. CreVa shows how sure it is and what would make it surer.</p></div></div>${form}${out}`;
@@ -1396,7 +1466,7 @@ V.checker=()=>{
 
 /* ============ shell and render ============ */
 function renderNav(){
-  const act=NAVMAP[S.route]||S.route, icn={home:'home',growth:'growth',opps:'opp',deals:'deals',rate:'rate',contracts:'contract',payments:'pay'};
+  const act=NAVMAP[S.route]||S.route, icn={home:'home',growth:'growth',opps:'opp',deals:'deals',rate:'rate',ratecard:'tag',contracts:'contract',payments:'pay'};
   $('#side').innerHTML=`<div class="brand">${LOGO}<div><b>CreVa</b><span>Deal intelligence</span></div></div>`+
     NAV.map(n=>`<button class="nav ${spotNav()===n[0]?'spot':''}" data-a="go" data-r="${n[0]}" ${act===n[0]?'aria-current="page"':''}>${ic(icn[n[0]],22)}<span>${n[1]}</span>${act===n[0]?`<span class="go">${ic('chev',16)}</span>`:''}</button>`).join('')+
     `<div class="sp"></div><button class="promo ${spotNav()==='promo'?'spot':''}" data-a="checker"><b>${ic('crown',22)}<span>Public rate checker</span><span class="go">${ic('chev',16)}</span></b><small>Know what you're worth. Know what you're signing. Grow what brands pay for.</small></button>`;
@@ -1421,7 +1491,8 @@ function render(scroll){
     if(S.route==='negotiate'&&S.A&&S.A.counter&&S.A.counter.max) S.done.counter=1;
     if(S.route==='growth') S.done.growth=1;
   }
-  renderCoach(); countUps(); addDictation();
+  renderCoach(); countUps(); addDictation(); renderRem();
+  { const rc=remList().length; if(rc!==S._rc){ S._rc=rc; applyTheme(); } const uj=JSON.stringify([S.theme,!!S.hideStart,S.done]); if(uj!==S._ui){ S._ui=uj; saveUi(); } }
 }
 function go(r){ S.route=r; if(r==='negotiate'&&!S.draft) setDraft(); render(); if(r==='contracts') ensureContract(); }
 
@@ -1457,11 +1528,12 @@ function quickAnalysis(id){ loadOffer(id); S.A=analyze(S.msg,S.con); S.mode=''; 
 
 /* ============ events ============ */
 document.addEventListener('click',async e=>{
+  if(S.remOpen&&!e.target.closest('.rempanel')&&!e.target.closest('[data-a="reminders"]')){ S.remOpen=false; renderRem(); }
   const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
   if(a==='go'){ e.preventDefault(); const r=b.dataset.r; if(r==='rate'&&!S.msg&&S.cur!=='blank'&&!S.A) loadOffer('glow'); if(r==='contracts'){ S.cid=null; } if(r==='negotiate'&&S.mode==='rule'&&!S.A){ loadOffer('glow'); S.A=analyze(S.msg,S.con); } go(r); }
   else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else if(r==='rategrowth'){ S.tab='rate'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
   else if(a==='menu'){ $('#side').classList.toggle('open'); $('#scrim').classList.toggle('open'); }
-  else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); }
+  else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); saveUi(); }
   else if(a==='sc-toggle'){ const s=S.profile.social[+b.dataset.i]; if(!s.active){ openLink(+b.dataset.i); } else { s.active=false; s.conn=false; S.dirty=true; render(false); } }
   else if(a==='issue'){ setIssue(b.dataset.k,b.dataset.s); }
   else if(a==='issues-all'){ const c=S.contracts.find(x=>x.id===S.cid); if(c){ c.states=c.states||{}; cRisks(c).forEach(r=>{ if(stOf(c,r.key)==='open') c.states[r.key]='reviewed'; }); saveContract(c); if(S.A&&!S.draftDirty) setDraft(); softRender(); toast('All issues marked reviewed'); } }
@@ -1498,9 +1570,50 @@ document.addEventListener('click',async e=>{
   else if(a==='mode'){ S.cMode=b.dataset.m; setDraft(); S.refused=false; render(false); aiDraft(''); }
   else if(a==='copy-draft'){ copyText(S.draft,'Copied. CreVa has not sent anything. Send it from your own account.'); }
   else if(a==='refine'){ const t=S.instr.trim(); if(!t)return; if(refusal(t)||/\b(send|accept|sign)\b/i.test(t)){ S.refused=true; render(false); return; } S.refused=false; aiDraft(t); }
-  else if(a==='dtab'){ S.dealTab=b.dataset.t; S.dealId=S.dealTab==='active'?'glow':''; render(false); }
-  else if(a==='deal'){ S.dealId=b.dataset.id; render(false); }
-  else if(a==='chase'){ S.chase=true; S.chaseDraft=`Hi, a quick note on my invoice of ₹22,000 for the WellnessCo campaign. It was due 6 days ago and I have not yet received payment. Could you confirm the payment date this week? Happy to resend the invoice if it helps.`; render(false); }
+  else if(a==='dtab'){ S.dealTab=b.dataset.t; S.dealId=''; S.signForm=null; S.invForm=null; render(false); }
+  else if(a==='deal'){ S.dealId=b.dataset.id; S.signForm=null; S.invForm=null; render(false); }
+  else if(a==='rem-chase'){ const d=dealById(b.dataset.id); if(!d) return; S.chaseId=d.id; S.chaseDraft=chaseDraftFor(d); S.remOpen=false; S.route='payments'; render(); }
+  else if(a==='rem-open'){ S.dealId=b.dataset.id; S.dealTab='active'; S.remOpen=false; S.route='deals'; render(); }
+  else if(a==='reminders'){ S.remOpen=!S.remOpen; renderRem(); }
+  else if(a==='sign-open'){ const d=dealById(S.dealId); if(!d) return; S.invForm=null; S.signForm={id:d.id,kind:b.dataset.kind,amount:d.closed!=null?d.closed:(d.counter!=null?d.counter:''),date:todayISO()}; softRender(); }
+  else if(a==='sign-cancel'){ S.signForm=null; softRender(); }
+  else if(a==='sign-save'){
+    const f=S.signForm, d=f&&dealById(f.id); if(!d) return; const amt=Number(f.amount);
+    if(!(amt>0)){ toast('Enter the agreed fee.'); return; }
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(f.date||'')){ toast('Choose a date.'); return; }
+    d.closed=Math.round(amt); d.terms=d.terms||{};
+    if(f.kind==='signed'){ d.terms.signedAt=f.date; if(['In progress','Needs review','Accepted'].includes(d.status)) d.status='Signed'; const c=d.reqs.find(r=>/contract/i.test(r.name)); if(c){ c.done=true; c.status='Signed, '+fmtD(f.date); } }
+    else { d.terms.acceptedAt=f.date; if(['In progress','Needs review'].includes(d.status)) d.status='Accepted'; }
+    if(d.pay&&!d.pay.invoiced) d.pay.expected=d.closed;
+    saveDeal(d,true); S.signForm=null; softRender(); toast(f.kind==='signed'?'Recorded as signed':'Recorded as accepted'); }
+  else if(a==='rq-toggle'){ const d=dealById(S.dealId), r=d&&d.reqs[+b.dataset.i]; if(!r) return; if(r.done){ r.done=false; r.status=r.prev||'Pending'; } else { r.prev=r.status; r.done=true; r.status='Done, '+fmtD(todayISO()); } saveDeal(d); softRender(); }
+  else if(a==='inv-open'||a==='inv-open-go'){
+    const d=dealById(b.dataset.id||S.dealId); if(!d) return;
+    if(a==='inv-open-go'){ S.dealTab='active'; S.route='deals'; }
+    S.dealId=d.id; S.signForm=null;
+    const net=((d.terms&&d.terms.payment)||'').match(/(\d+)/), count=S.deals.filter(x=>x.terms&&x.terms.invoice).length+1;
+    S.invForm={id:d.id,no:'INV-'+new Date().getFullYear()+'-'+String(count).padStart(3,'0'),issuedAt:todayISO(),amount:d.closed||'',gstPct:S.profile.gst==='Registered'?18:0,days:net?+net[1]:30};
+    if(a==='inv-open-go') render(); else softRender(); }
+  else if(a==='inv-cancel'){ S.invForm=null; softRender(); }
+  else if(a==='inv-save'){
+    const f=S.invForm, d=f&&dealById(f.id); if(!d) return;
+    const amt=Math.round(Number(f.amount)), g=Math.max(0,Math.min(28,Math.round(Number(f.gstPct)||0))), days=Math.max(0,Math.round(Number(f.days)||0));
+    if(!(amt>0)||!(f.no||'').trim()||!/^\d{4}-\d{2}-\d{2}$/.test(f.issuedAt||'')){ toast('Check the invoice number, date and amount.'); return; }
+    const gst=Math.round(amt*g/100), total=amt+gst, dueAt=addDays(f.issuedAt,days);
+    d.terms=d.terms||{}; d.terms.invoice={no:f.no.trim(),issuedAt:f.issuedAt,dueAt,amount:amt,gstPct:g,gst,total};
+    d.pay={expected:d.closed||amt,invoiced:total,received:d.pay?d.pay.received:0,dueDate:dueAt,status:'Invoiced'}; if(d.status!=='Paid') d.status='Awaiting payment';
+    const r=d.reqs.find(x=>/invoice/i.test(x.name)); if(r){ r.done=true; r.status='Sent, '+fmtD(f.issuedAt); }
+    saveDeal(d,true); S.invForm=null; softRender(); toast('Invoice created. Download it, review it and send it yourself.'); }
+  else if(a==='inv-download'){ const d=dealById(b.dataset.id); if(d&&d.terms.invoice) downloadFile('invoice-'+d.terms.invoice.no+'.html',invoiceHtml(d),'text/html'); }
+  else if(a==='inv-preview'){ const d=dealById(b.dataset.id); if(d&&d.terms.invoice) openPreview(invoiceHtml(d)); }
+  else if(a==='proof-download'){ const d=dealById(b.dataset.id); if(d) downloadFile('proof-pack-'+d.brand.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.html',proofHtml(d),'text/html'); }
+  else if(a==='proof-preview'){ const d=dealById(b.dataset.id); if(d) openPreview(proofHtml(d)); }
+  else if(a==='deals-csv'){ if(!planAllows('export')){ toast('Export is part of the Pro plan.'); return; } downloadFile('creva-deals.csv',dealsCsv(),'text/csv'); }
+  else if(a==='mark-received'){ const d=dealById(b.dataset.id); if(!d) return; const p=payOf(d); d.pay={...p,received:p.invoiced||p.expected,invoiced:p.invoiced||p.expected,status:'Paid'}; d.status='Paid'; const r=d.reqs.find(x=>/payment/i.test(x.name)); if(r){ r.done=true; r.status='Paid, '+fmtD(todayISO()); } saveDeal(d,true); softRender(); toast('Marked as received'); }
+  else if(a==='plan-set'){ S.profile.plan=b.dataset.p; S.dirty=true; saveProfile(false); toast('Plan set to '+b.dataset.p+' (demo, no payment)'); render(false); }
+  else if(a==='rc-csv'){ downloadFile('creva-rate-card.csv',rateCardCsv(),'text/csv'); }
+  else if(a==='rc-copy'){ copyText(rateCardText(),'Rate card copied.'); }
+  else if(a==='share-check'){ shareCheck(); }
   else if(a==='copy-chase'){ copyText(S.chaseDraft,'Copied. CreVa has not sent anything. Send it yourself.'); }
   else if(a==='gtab'){ S.tab=b.dataset.t; render(false); }
   else if(a==='autopsy'){ runAutopsy(); }
@@ -1516,13 +1629,16 @@ document.addEventListener('input',e=>{
   if(t.dataset.pf){ S.profile[t.dataset.pf]=t.value; S.dirty=true; const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
   if(t.dataset.sc){ const [i,f]=t.dataset.sc.split(':'); S.profile.social[+i][f]=t.type==='number'&&t.value!==''?+t.value:t.value; S.dirty=true; const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
   if(t.dataset.bind){ const k=t.dataset.bind; S[k]=t.value; if(k==='draft')S.draftDirty=true; if(k==='msg'){ const mc=$('#mc'); if(mc) mc.textContent=t.value.length+'/2000'; } }
+  if(t.dataset.sf&&S.signForm){ S.signForm[t.dataset.sf]=t.type==='number'?(t.value===''?'':+t.value):t.value; }
+  if(t.dataset.ivf&&S.invForm){ S.invForm[t.dataset.ivf]=t.type==='number'?(t.value===''?'':+t.value):t.value; }
+  if(t.dataset.rq!==undefined){ const dd=dealById(S.dealId); if(dd&&dd.reqs[+t.dataset.rq]){ dd.reqs[+t.dataset.rq].proof=t.value; saveDeal(dd); } }
   if(t.dataset.ck){ S.chk[t.dataset.ck]=t.type==='number'?(t.value===''?'':+t.value):t.value; }
 });
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.aChange==='post'){ S.post=t.value; render(false); }
   if(t.dataset.ck==='platform'){ S.chk.deliver=t.value==='LinkedIn'?'li1':'reel'; render(false); }
-  if(t.id==='av_up'&&t.files&&t.files[0]){ const f=t.files[0]; if(f.size>4e6){ toast('Choose a photo under 4 MB.'); return; } const rd=new FileReader(); rd.onload=()=>{ S.profile.avatar.photo=String(rd.result); S.dirty=true; refreshAvatar(); const si=document.getElementById('saveinfo'); if(si) si.textContent='You have unsaved changes.'; }; rd.readAsDataURL(f); return; }
+  if(t.id==='av_up'&&t.files&&t.files[0]){ const f=t.files[0]; if(f.size>12e6){ toast('Choose a photo under 12 MB.'); return; } downscalePhoto(f,url=>{ if(!url){ toast('Could not read that image.'); return; } S.profile.avatar.photo=url; S.dirty=true; refreshAvatar(); saveProfile(false).then(ok=>{ const si=document.getElementById('saveinfo'); if(si) si.textContent=ok?'All changes saved.':'You have unsaved changes.'; toast(S.db==='online'?(ok?'Photo saved':'Could not save the photo yet. It will retry.'):'Photo kept on this page only (database offline)'); }); }); return; }
   if(t.id==='upl'&&t.files&&t.files[0]){
     const f=t.files[0];
     if(/\.pdf$/i.test(f.name)){ S.file=f.name; $('#uplnote').textContent='PDF noted: '+f.name+'. CreVa reads text only, so paste the contract text into the box above.'; return; }
@@ -1562,7 +1678,7 @@ async function runAutopsy(){
 async function runCheck(){
   if(S.chkBusy) return;
   const c=S.chk; const f={platform:c.platform,followers:+c.followers||null,eng:c.eng===''?null:+c.eng,deliver:c.deliver,usage:c.usage,excl:c.excl,last:+c.last||0};
-  const o=checkRate(f); S.chkOut=o; S.done.checker=1; S.chkBusy=true; S.chkMode=''; render(false);
+  const o=checkRate(f); S.chkOut=o; S.shared=false; S.done.checker=1; S.chkBusy=true; S.chkMode=''; render(false);
   try{
     let narrow=null;
     if(inArtifact()){
@@ -1582,7 +1698,7 @@ async function runCheck(){
 /* ---- profile ---- */
 S.profile={name:'Ananya Sharma',gender:'Female',dob:'',email:'ananya.sharma@example.com',phone:'+91 98765 43210',city:'Bengaluru',state:'Karnataka',bio:'Career and productivity creator. I help young professionals handle appraisals, side income and deep work.',
   niche:'Career and productivity',audAge:'22 to 34',audCity:'Bengaluru, Mumbai, Delhi NCR',minFee:'',invName:'Ananya Sharma',gst:'Not registered',gstin:'',upi:'',
-  nOffer:true,nPay:true,nDisc:true,langs:['English','Hindi'],subs:['Careers','Productivity'],
+  nOffer:true,nPay:true,nDisc:true,plan:'Pro',langs:['English','Hindi'],subs:['Careers','Productivity'],
   social:[
    {id:'ig',name:'Instagram',ab:'IG',bg:'#E4416A',active:true,handle:'ananyasharma',followers:54000,avg:''},
    {id:'li',name:'LinkedIn',ab:'in',bg:'#2B6CB0',active:true,handle:'ananya-sharma',followers:18000,avg:''},
@@ -1650,6 +1766,7 @@ V.profile=()=>{
      ${inp('Name on invoices','invName')}${sel('GST status','gst',['Not registered','Registered'])}
      ${p.gst==='Registered'?inp('GSTIN','gstin',{ph:'15 characters'}):''}${inp('UPI ID','upi',{ph:'name@bank'})}</div>
      <p class="muted small" style="margin-top:12px">Used to fill invoices and reminders. Stored on this page only, in memory, and cleared when you reload.</p></div>
+   <div class="card fsec"><div class="h3">Plan <span class="sev acc">${p.plan||'Pro'}</span></div><div class="modes">${[['Free','₹0','Rate checker, 2 analyses a month, basic rate card'],['Founding','₹499 a month','The first 200 creators. Everything in Pro, for a feedback commitment'],['Pro','₹799 a month','Unlimited analysis, contract review, negotiation, tracker and Post Autopsy']].map(x=>`<button type="button" class="mode" data-a="plan-set" data-p="${x[0]}" aria-pressed="${(p.plan||'Pro')===x[0]}"><b>${x[0]}</b><span class="pr num" style="font-size:18px">${x[1]}</span><span class="d">${x[2]}</span></button>`).join('')}</div><p class="muted small" style="margin-top:10px">Prototype: no payment is taken. This only switches what you can use here. Everything you save is kept in this demo database and can be seen by anyone with the link.</p></div>
    <div class="card fsec"><div class="h3">Preferences</div><div class="stack" style="gap:10px">
      ${tog('New offers','Tell me when a brand offer arrives.','nOffer')}${tog('Payment reminders','Flag invoices that are due or late.','nPay')}${tog('Disclosure checks','Warn me when a draft is missing the paid partnership label.','nDisc')}</div></div>
    <div class="savebar"><span class="muted small" id="saveinfo">${S.dirty?'You have unsaved changes.':'All changes saved.'}</span><div style="display:flex;gap:10px"><button class="btn" data-a="pf-reset">Reset</button><button class="btn p" data-a="pf-save">Save profile</button></div></div>
@@ -1728,7 +1845,7 @@ function avatarSvg(seed){
 S.profile.avatar={seed:(function(){ try{ const v=localStorage.getItem('creva_av'); if(v) return +v; }catch(e){} const s=Math.floor(Math.random()*1e6)+1; try{ localStorage.setItem('creva_av',String(s)); }catch(e){} return s; })(),photo:null};
 function avatarHtml(){ const a=S.profile.avatar; return a.photo?`<img src="${a.photo}" alt="Profile picture" style="width:100%;height:100%;object-fit:cover;display:block">`:avatarSvg(a.seed); }
 function refreshAvatar(){ const e=document.getElementById('pfav'); if(e) e.innerHTML=avatarHtml(); document.querySelectorAll('.av').forEach(x=>{ x.innerHTML=avatarHtml(); }); }
-function shuffleAvatar(){ const a=S.profile.avatar; a.seed=Math.floor(Math.random()*1e6)+1; a.photo=null; try{ localStorage.setItem('creva_av',String(a.seed)); }catch(e){} S.dirty=true; refreshAvatar(); const si=document.getElementById('saveinfo'); if(si) si.textContent='You have unsaved changes.'; }
+function shuffleAvatar(){ const a=S.profile.avatar; a.seed=Math.floor(Math.random()*1e6)+1; a.photo=null; setTimeout(()=>{ if(typeof saveProfile==='function') saveProfile(false); },0); try{ localStorage.setItem('creva_av',String(a.seed)); }catch(e){} S.dirty=true; refreshAvatar(); const si=document.getElementById('saveinfo'); if(si) si.textContent='You have unsaved changes.'; }
 
 /* ---- speech to text ---- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -1845,7 +1962,7 @@ function profileToApi(){
   return {name:p.name,gender:p.gender,dob:p.dob||'',email:p.email,phone:p.phone,city:p.city,state:p.state,bio:p.bio,niche:p.niche,minFeeInr:p.minFee===''||p.minFee==null?null:Number(p.minFee),
     topics:p.subs,languages:p.langs,audience:{age:p.audAge,cities:p.audCity},
     social:p.social.map(s=>({id:s.id,active:!!s.active,handle:s.handle||'',followers:typeof s.followers==='number'?s.followers:null,avg:typeof s.avg==='number'?s.avg:null,conn:!!s.conn})),
-    invoicing:{invoiceName:p.invName,gst:p.gst,gstin:p.gstin,upi:p.upi},preferences:{newOffers:p.nOffer,paymentReminders:p.nPay,disclosureChecks:p.nDisc}};
+    invoicing:{invoiceName:p.invName,gst:p.gst,gstin:p.gstin,upi:p.upi},preferences:{newOffers:p.nOffer,paymentReminders:p.nPay,disclosureChecks:p.nDisc,plan:p.plan||'Pro',avatar:p.avatar&&p.avatar.photo?p.avatar.photo:'',avatarSeed:p.avatar&&Number.isInteger(p.avatar.seed)?p.avatar.seed:null}};
 }
 function profileFromApi(a){
   const p=S.profile;
@@ -1855,7 +1972,7 @@ function profileFromApi(a){
   if(a.languages&&a.languages.length) p.langs=a.languages.slice();
   if(a.audience){ p.audAge=a.audience.age||p.audAge; p.audCity=a.audience.cities||p.audCity; }
   if(a.invoicing){ p.invName=a.invoicing.invoiceName||p.invName; p.gst=a.invoicing.gst||p.gst; p.gstin=a.invoicing.gstin||''; p.upi=a.invoicing.upi||''; }
-  if(a.preferences){ p.nOffer=a.preferences.newOffers!==false; p.nPay=a.preferences.paymentReminders!==false; p.nDisc=a.preferences.disclosureChecks!==false; }
+  if(a.preferences){ p.nOffer=a.preferences.newOffers!==false; p.nPay=a.preferences.paymentReminders!==false; p.nDisc=a.preferences.disclosureChecks!==false; if(a.preferences.plan) p.plan=a.preferences.plan; if(a.preferences.avatar) p.avatar.photo=a.preferences.avatar; if(Number.isInteger(a.preferences.avatarSeed)) p.avatar.seed=a.preferences.avatarSeed; }
   p.social.forEach(s=>{
     const saved=(a.social||[]).find(x=>x&&x.id===s.id);
     const col=s.id==='ig'?a.instagram:(s.id==='li'?a.linkedin:null);
@@ -1863,12 +1980,12 @@ function profileFromApi(a){
     else if(col){ s.active=!!col.handle; s.handle=col.handle||''; s.followers=col.followers==null?'':col.followers; }
   });
 }
-let savedJson='', lastSeen='', savingProfile=false;
+let savedJson='', lastSeen='', savingProfile=false, saveAgain=false;
 async function saveProfile(manual){
   if(S.db!=='online') return false;
   const body=profileToApi(), js=JSON.stringify(body);
   if(js===savedJson) return true;
-  if(savingProfile) return false;
+  if(savingProfile){ saveAgain=true; return false; } // a save is in flight: run once more when it ends, so a photo uploaded meanwhile is not skipped
   savingProfile=true;
   try{
     const res=await fetch('/api/data?kind=profile',{method:'POST',headers:{'Content-Type':'application/json'},body:js});
@@ -1876,7 +1993,7 @@ async function saveProfile(manual){
     if(res.ok&&d&&d.ok){ savedJson=js; return true; }
     return false;
   }catch(e){ return false; }
-  finally{ savingProfile=false; }
+  finally{ savingProfile=false; if(saveAgain){ saveAgain=false; setTimeout(()=>saveProfile(false),0); } }
 }
 // Autosave: only when the profile has CHANGED, and only after it has been unchanged for one tick (a debounce, not a keystroke write).
 setInterval(()=>{
@@ -1919,7 +2036,9 @@ async function bootstrapData(){
   try{
     const res=await fetch('/api/data?kind=bootstrap',{signal:ctrl.signal}); const d=await res.json();
     if(!res.ok||!d||!d.ok) throw new Error('db');
-    if(d.profile&&!S.dirty) profileFromApi(d.profile);
+    if(d.profile&&!S.dirty){ profileFromApi(d.profile); refreshAvatar(); }
+    if(Array.isArray(d.deals)&&d.deals.length){ const order=['glow','studykart','wellnessco','ledgerly','northdesk','calmbase']; const m=d.deals.map(r=>mapDeal(r,d.payments||[])); S.deals=[...order.map(id=>m.find(x=>x.id===id)).filter(Boolean),...m.filter(x=>!order.includes(x.id))]; }
+    if(d.usage) S.usage.dealAnalyses=d.usage.dealAnalyses||0;
     if(Array.isArray(d.contracts)&&d.contracts.length){
       const order=['glow','ledgerly','northdesk'];
       const mapped=d.contracts.map(c=>({id:c.id,brand:c.brand,file:c.file,text:c.text,msg:c.msg||'',status:c.status,states:c.states||{},added:SEEDED_ADDED[c.id]||('Added '+new Date(c.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})),_t:new Date(c.createdAt).getTime()}));
@@ -1938,14 +2057,208 @@ async function bootstrapData(){
   if(!['checker'].includes(S.route)) softRender();
 }
 
+/* ---- deals, invoices, proof pack, reminders, plan, rate card ---- */
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const daysBetween=(a,b)=>Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);
+const addDays=(iso,n)=>{ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+const fmtD=iso=>{ if(!iso) return ''; try{ return new Date(iso+'T00:00:00Z').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}); }catch(e){ return iso; } };
+const BRAND_TAG={GlowSkin:['High','high'],StudyKart:['Fair','ok'],WellnessCo:['Barter','med']};
+
+// Seeded deals: used when the database is offline. They match supabase/seed.sql.
+const DEAL_SEED=[
+ {id:'glow',brand:'GlowSkin',deliverables:'1 Reel + 3 Stories',status:'In progress',opening:30000,counter:68000,closed:58000,
+  terms:{usage:'30-day organic',exclusivity:'None',revisions:'1 round',payment:'Net-30'},
+  reqs:[{name:'Contract',status:'Signed, 2 Oct',done:true,proof:''},{name:'Reel',status:'Due 18 Oct',done:false,proof:''},{name:'Stories',status:'Due 20 Oct',done:false,proof:''},{name:'Proof report',status:'Pending',done:false,proof:''},{name:'Invoice',status:'Sent 21 Oct',done:true,proof:''},{name:'Payment',status:'Due 20 Nov',done:false,proof:''}],
+  pay:{expected:58000,invoiced:58000,received:0,dueDate:'2026-11-20',status:'Awaiting payment'}},
+ {id:'studykart',brand:'StudyKart',deliverables:'1 Reel + 1 Post',status:'In progress',closed:40000,terms:{},reqs:[],pay:null},
+ {id:'wellnessco',brand:'WellnessCo',deliverables:'2 Reels + 4 Stories',status:'Awaiting payment',closed:22000,terms:{},reqs:[],pay:{expected:22000,invoiced:22000,received:0,dueDate:'2026-10-04',status:'Overdue'}},
+ {id:'ledgerly',brand:'Ledgerly',deliverables:'1 Reel + 2 Stories',status:'Paid',closed:57000,terms:{},reqs:[],pay:{expected:57000,invoiced:57000,received:57000,dueDate:null,status:'Paid'}},
+ {id:'northdesk',brand:'Northdesk',deliverables:'1 LinkedIn post',status:'Paid',closed:51000,terms:{},reqs:[],pay:{expected:51000,invoiced:51000,received:51000,dueDate:null,status:'Paid'}},
+ {id:'calmbase',brand:'Calmbase',deliverables:'1 Reel',status:'Paid',closed:42000,terms:{},reqs:[],pay:{expected:42000,invoiced:42000,received:42000,dueDate:null,status:'Paid'}}
+];
+S.deals=JSON.parse(JSON.stringify(DEAL_SEED));
+S.usage={dealAnalyses:0};
+S.dealSaveTimers={};
+
+function mapDeal(row,pays){
+  const p=pays.find(x=>x.deal_id===row.id);
+  return {id:row.id,brand:row.brand,deliverables:row.deliverables||'',status:row.status,opening:row.opening_offer,counter:row.our_counter,closed:row.closed_amount,
+    terms:row.terms||{},
+    reqs:(row.requirements||[]).map(r=>({name:r.name,status:r.status||'',done:r.done!==undefined?!!r.done:/signed|sent|done|paid/i.test(r.status||''),proof:r.proof||''})),
+    pay:p?{expected:p.expected,invoiced:p.invoiced,received:p.received,dueDate:p.due_date,status:p.status}:null};
+}
+const dealById=id=>S.deals.find(d=>d.id===id);
+const isOpenDeal=d=>d.status!=='Paid';
+const payOf=d=>d.pay||{expected:d.closed||0,invoiced:0,received:0,dueDate:null,status:'Not invoiced'};
+const dueIn=d=>{ const p=payOf(d); return p.dueDate&&p.invoiced>p.received?daysBetween(todayISO(),p.dueDate):null; };
+
+// Save a deal (status, signed date, proof checklist, invoice) and its payment. Debounced; flushed when the tab is hidden.
+function dealBody(d){
+  const p=d.pay;
+  return {id:d.id,brand:d.brand,status:d.status,deliverables:d.deliverables,openingOffer:d.opening==null?null:d.opening,counter:d.counter==null?null:d.counter,closed:d.closed==null?null:d.closed,
+    terms:d.terms||{},requirements:d.reqs.map(r=>({name:r.name,status:r.status,done:!!r.done,proof:r.proof||''})),
+    payment:p?{expected:p.expected,invoiced:p.invoiced,received:p.received,dueDate:p.dueDate||'',status:p.status}:null};
+}
+function saveDeal(d,now){
+  if(S.db!=='online') return;
+  clearTimeout(S.dealSaveTimers[d.id]);
+  const send=()=>{ delete S.dealSaveTimers[d.id]; try{ fetch('/api/data?kind=deal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dealBody(d)),keepalive:true}).catch(()=>{}); }catch(e){} };
+  if(now) send(); else { S.dealSaveTimers[d.id]=setTimeout(send,500); S.dealSaveTimers[d.id]._send=send; }
+}
+function flushPending(){
+  // The tab is being hidden or closed: send anything still waiting, so nothing the creator entered is lost.
+  try{
+    for(const id of Object.keys(S.dealSaveTimers)){ const t=S.dealSaveTimers[id]; clearTimeout(t); if(t._send) t._send(); }
+    for(const id of Object.keys(ctimers)){ const c=S.contracts.find(x=>x.id===id); clearTimeout(ctimers[id]); delete ctimers[id]; if(c&&S.db==='online') fetch('/api/data?kind=contract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:c.id,brand:c.brand,filename:c.file,body:c.text,message:c.msg||'',status:c.status,issueStates:c.states||{}}),keepalive:true}).catch(()=>{}); }
+    if(S.db==='online'){ const js=JSON.stringify(profileToApi()); if(js!==savedJson&&S.profile.name.trim()){ fetch('/api/data?kind=profile',{method:'POST',headers:{'Content-Type':'application/json'},body:js,keepalive:true}).then(()=>{ savedJson=js; }).catch(()=>{}); } }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushPending(); });
+window.addEventListener('pagehide',flushPending);
+
+/* downloads: a normal site can download a generated file; inside the Claude artifact frame this is blocked */
+function downloadFile(name,text,mime){
+  try{ const b=new Blob([text],{type:mime||'text/plain'}), u=URL.createObjectURL(b), a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),3000); toast('Downloaded '+name); }
+  catch(e){ toast('Downloads are blocked in this view. Open the site in its own browser tab.'); }
+}
+function openPreview(html){ try{ const u=URL.createObjectURL(new Blob([html],{type:'text/html'})); const w=window.open(u,'_blank'); if(!w) toast('Allow pop-ups to preview, or use Download.'); setTimeout(()=>URL.revokeObjectURL(u),60000); }catch(e){ toast('Preview is blocked in this view. Use Download.'); } }
+const csvCell=v=>{ const s=String(v==null?'':v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+const docStyle='body{font:14px/1.5 system-ui,Segoe UI,sans-serif;color:#1a1a2e;max-width:760px;margin:32px auto;padding:0 20px}h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#555;margin:26px 0 8px}table{width:100%;border-collapse:collapse}td,th{padding:8px 10px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}.r{text-align:right}.tot td{font-weight:700;border-top:2px solid #1a1a2e}.muted{color:#666;font-size:12.5px}.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:#eee;font-size:12px}@media print{body{margin:0}}';
+const docWrap=(title,body)=>'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+docStyle+'</style></head><body>'+body+'</body></html>';
+
+function invoiceHtml(d){
+  const inv=d.terms.invoice, p=S.profile;
+  const row=(a,b)=>'<tr><td>'+a+'</td><td class="r">'+b+'</td></tr>';
+  return docWrap('Invoice '+inv.no,
+    '<h1>'+(inv.gstPct>0?'Tax invoice':'Invoice')+' '+esc(inv.no)+'</h1><div class="muted">Issued '+esc(fmtD(inv.issuedAt))+' · Due '+esc(fmtD(inv.dueAt))+'</div>'+
+    '<h2>From</h2><div><b>'+esc(p.invName||p.name)+'</b><br>'+esc([p.city,p.state].filter(Boolean).join(', '))+(p.gst==='Registered'&&p.gstin?'<br>GSTIN '+esc(p.gstin):'')+(p.email?'<br>'+esc(p.email):'')+(p.phone?'<br>'+esc(p.phone):'')+'</div>'+
+    '<h2>To</h2><div><b>'+esc(d.brand)+'</b></div>'+
+    '<h2>For</h2><table><tr><th>Description</th><th class="r">Amount</th></tr>'+row('Creator services: '+esc(d.deliverables||'campaign deliverables')+(d.terms.usage?' (usage: '+esc(d.terms.usage)+')':''),esc(INR(inv.amount)))+
+    (inv.gstPct>0?row('GST at '+inv.gstPct+'%',esc(INR(inv.gst))):'')+'<tr class="tot"><td>Total due</td><td class="r">'+esc(INR(inv.total))+'</td></tr></table>'+
+    '<h2>Payment</h2><div>'+(p.upi?'UPI: <b>'+esc(p.upi)+'</b><br>':'')+'Payment terms: '+esc(d.terms.payment||'as agreed')+'. Please quote '+esc(inv.no)+' on payment.</div>'+
+    '<p class="muted" style="margin-top:28px">Drafted in CreVa for the creator to review and send. CreVa did not send this invoice.</p>');
+}
+function proofHtml(d){
+  const p=payOf(d), t=d.terms||{}, inv=t.invoice;
+  const hist=(S.hist||[]).find(h=>String(h.brand||'').toLowerCase()===d.brand.toLowerCase());
+  return docWrap('Proof pack: '+d.brand,
+    '<h1>Proof pack: '+esc(d.brand)+'</h1><div class="muted">Prepared '+esc(fmtD(todayISO()))+' for '+esc(S.profile.name)+'. A record of what was agreed, delivered and paid.</div>'+
+    '<h2>The deal</h2><table>'+
+    '<tr><td>Deliverables</td><td>'+esc(d.deliverables||'not recorded')+'</td></tr>'+
+    (d.opening!=null?'<tr><td>First offer</td><td>'+esc(INR(d.opening))+'</td></tr>':'')+
+    (d.counter!=null?'<tr><td>Counter sent</td><td>'+esc(INR(d.counter))+'</td></tr>':'')+
+    '<tr><td>Agreed fee</td><td><b>'+esc(d.closed!=null?INR(d.closed):'not recorded')+'</b></td></tr>'+
+    '<tr><td>Status</td><td>'+esc(d.status)+(t.signedAt?' · signed '+esc(fmtD(t.signedAt)):'')+(t.acceptedAt&&!t.signedAt?' · accepted '+esc(fmtD(t.acceptedAt)):'')+'</td></tr>'+
+    ['usage','exclusivity','revisions','payment'].filter(k=>t[k]).map(k=>'<tr><td>'+k.charAt(0).toUpperCase()+k.slice(1)+'</td><td>'+esc(t[k])+'</td></tr>').join('')+'</table>'+
+    (hist&&hist.headline?'<h2>CreVa analysis</h2><div>'+esc(hist.headline)+(hist.fairLow!=null?'<br><span class="muted">Fair range '+esc(INR(hist.fairLow))+' to '+esc(INR(hist.fairHigh))+'. Estimates, not market facts.</span>':'')+'</div>':'')+
+    '<h2>Deliverables checklist</h2><table><tr><th>Item</th><th>Status</th><th>Proof</th></tr>'+
+    (d.reqs.length?d.reqs.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+(r.done?'<span class="pill">Done</span>':esc(r.status||'Pending'))+'</td><td>'+esc(r.proof||'')+'</td></tr>').join(''):'<tr><td colspan="3" class="muted">No checklist recorded.</td></tr>')+'</table>'+
+    '<h2>Invoice and payment</h2><table>'+
+    (inv?'<tr><td>Invoice</td><td>'+esc(inv.no)+' · '+esc(INR(inv.total))+(inv.gstPct>0?' incl. GST '+inv.gstPct+'%':'')+' · due '+esc(fmtD(inv.dueAt))+'</td></tr>':'<tr><td>Invoice</td><td class="muted">Not created yet</td></tr>')+
+    '<tr><td>Invoiced</td><td>'+esc(INR(p.invoiced))+'</td></tr><tr><td>Received</td><td>'+esc(INR(p.received))+'</td></tr><tr><td>Payment status</td><td>'+esc(p.status)+'</td></tr></table>'+
+    '<h2>Disclosure</h2><div>Sponsored posts carry the paid partnership label.</div>'+
+    '<p class="muted" style="margin-top:28px">Generated by CreVa from details the creator entered. CreVa explains commercial consequences, not legal validity.</p>');
+}
+function dealsCsv(){
+  const head=['Brand','Deliverables','Status','First offer','Counter','Agreed fee','Signed','Invoiced','Received','Due date','Payment status'];
+  const rows=S.deals.map(d=>{ const p=payOf(d); return [d.brand,d.deliverables,d.status,d.opening,d.counter,d.closed,(d.terms||{}).signedAt||'',p.invoiced,p.received,p.dueDate||'',p.status]; });
+  return [head,...rows].map(r=>r.map(csvCell).join(',')).join('\n');
+}
+function chaseDraftFor(d){
+  const p=payOf(d), inv=(d.terms||{}).invoice, n=dueIn(d), late=n!=null&&n<0?-n:null;
+  return 'Hi, a quick note on '+(inv?'invoice '+inv.no+' ':'my invoice ')+'of '+INR(inv?inv.total:p.invoiced)+' for the '+d.brand+' campaign. '+(late!=null?'It was due on '+fmtD(p.dueDate)+', '+late+' day'+(late===1?'':'s')+' ago, and I have not yet received payment. ':'It falls due on '+fmtD(p.dueDate)+'. ')+'Could you confirm the payment date this week? Happy to resend the invoice if it helps.'+(S.profile.upi?'\n\nUPI: '+S.profile.upi:'');
+}
+
+/* reminders: shown to the creator in the app. CreVa never sends them anywhere. */
+function remList(){
+  if(S.profile&&S.profile.nPay===false) return [];
+  const out=[];
+  for(const d of S.deals){ const n=dueIn(d); if(n==null||d.status==='Paid') continue; if(n<0) out.push({d,kind:'late',days:-n}); else if(n<=7) out.push({d,kind:'soon',days:n}); }
+  return out.sort((a,b)=>(a.kind==='late'?-1:1)-(b.kind==='late'?-1:1)||b.days-a.days);
+}
+function renderRem(){
+  const el=document.getElementById('rempanel'); if(!el) return;
+  if(!S.remOpen){ el.innerHTML=''; return; }
+  const L=remList();
+  el.innerHTML=`<div class="rempanel card" role="dialog" aria-label="Reminders"><div class="h3" style="margin-bottom:10px">Reminders <span class="sev ${L.length?'med':'ok'}">${L.length}</span></div>
+    ${L.length?L.map(x=>`<div class="ins" style="margin-bottom:8px"><span class="ib sq">${ic(x.kind==='late'?'alert':'clock',18)}</span><div class="t"><b>${esc(x.d.brand)} · ${INR(payOf(x.d).invoiced-payOf(x.d).received)}</b><span>${x.kind==='late'?x.days+' day'+(x.days===1?'':'s')+' late':'Due in '+x.days+' day'+(x.days===1?'':'s')}</span></div>${x.kind==='late'?`<button class="btn sm p" data-a="rem-chase" data-id="${esc(x.d.id)}">Chase</button>`:`<button class="btn sm" data-a="rem-open" data-id="${esc(x.d.id)}">Open</button>`}</div>`).join(''):'<div class="muted">Nothing is due soon.</div>'}
+    <p class="muted small" style="margin-top:8px">Reminders are shown to you only. CreVa never sends anything to a brand.</p></div>`;
+}
+
+/* plans: Free = rate checker, 2 analyses a month, basic rate card. Pro and Founding = everything. Prototype: no payment is taken. */
+const planOf=()=>(S.profile&&S.profile.plan)||'Pro';
+const FREE_ANALYSES=2;
+function planAllows(feature){ if(planOf()!=='Free') return true; return ['checker','deal','ratecard-basic'].includes(feature); }
+const analysesLeft=()=>planOf()==='Free'?Math.max(0,FREE_ANALYSES-(S.usage.dealAnalyses||0)):Infinity;
+function lockView(title,msg){
+  return `${pageHead(title,'')}<div class="card pad stack" style="max-width:560px"><span class="ib">${ic('lock',22)}</span><h3 style="font-size:20px;font-weight:700">${esc(msg)}</h3>
+    <p class="muted">You are on the Free plan: rate checker, 2 analyses a month and a basic rate card. Pro adds unlimited analysis, contract review, negotiation, the deal tracker and Post Autopsy.</p>
+    <p class="note acc">${ic('alert',18)}<span><b>Prototype.</b> No payment is taken. Switching plan only changes what you can use here.</span></p>
+    <div><button class="btn p" data-a="plan-set" data-p="Pro">Switch to Pro (demo)</button></div></div>`;
+}
+
+function lockInline(msg){
+  return `<div class="card pad stack" style="max-width:560px"><span class="ib">${ic('lock',22)}</span><h3 style="font-size:20px;font-weight:700">${esc(msg)}</h3><p class="muted">You are on the Free plan. Pro adds unlimited analysis, contract review, negotiation, the deal tracker and Post Autopsy.</p><div><button class="btn p" data-a="plan-set" data-p="Pro">Switch to Pro (demo)</button></div></div>`;
+}
+
+/* rate card: the reference rates the engine prices with, so a creator can see where a number comes from */
+const RATE_CARD=[['Reel (Instagram)',38000,'per Reel'],['Story',3000,'per extra Story'],['LinkedIn post',22000,'per post'],['Newsletter mention',18000,'per mention'],['Paid media usage',10000,'adds to the content price'],['Usage of 90 days or more',6000,'organic, adds to the content price'],['Category exclusivity',2000,'per month'],['Revision beyond the first',1500,'per round'],['Net-60 payment',-1000,'cash-flow adjustment'],['Net-90 payment or longer',-2000,'cash-flow adjustment']];
+const RATE_SEPARATE=[['Perpetual usage',15000,'priced as a separate licence, not in the indicative value'],['Raw footage handover',4000,'priced separately if included']];
+function rateCardCsv(){
+  const rows=[['Item','Rupees','Note'],...RATE_CARD,...RATE_SEPARATE,['Your closed deals (Tier 1)',S.net.closed.join(' | '),'from your Deals'],['Network median (Tier 2, demo data)',S.net.median,S.net.count+' deals']];
+  return rows.map(r=>r.map(csvCell).join(',')).join('\n');
+}
+function rateCardText(){ return 'CreVa rate card for '+S.profile.name+'\n'+RATE_CARD.map(r=>r[0]+': '+(r[1]<0?'-':'')+INR(Math.abs(r[1]))+' ('+r[2]+')').join('\n')+'\nSeparately: '+RATE_SEPARATE.map(r=>r[0]+' about '+INR(r[1])).join('; ')+'\nReference rates, not a market average. Your closed deals: '+S.net.closed.map(INR).join(', ')+'.'; }
+V.ratecard=()=>{
+  const G=analyze(GLOW_MSG,GLOW_CON), full=planAllows('ratecard-full');
+  const rr=(r)=>`<tr><td><b>${esc(r[0])}</b></td><td class="num" style="white-space:nowrap">${r[1]<0?'-':''}${INR(Math.abs(r[1]))}</td><td class="muted">${esc(r[2])}</td></tr>`;
+  return `${pageHead('Rate card','The reference rates CreVa prices with. A real offer adds rights on top of the content.',full?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="rc-copy">${ic('doc',15)} Copy</button><button class="btn p" data-a="rc-csv">${ic('download',15)} Download CSV</button></div>`:`<span class="sev low">Basic rate card (Free plan)</span>`)}
+  ${full?`<div class="cells" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div>${ib('layers')}<div><div class="lab">Content in the GlowSkin example</div><div class="mid num">${INR(G.content)}</div><div class="muted small">1 Reel + 3 Stories</div></div></div><div>${ib('lock')}<div><div class="lab">Rights in the GlowSkin example</div><div class="mid num">${INR(G.rights)}</div><div class="muted small">Paid media, exclusivity, revisions</div></div></div></div>
+  <p class="muted small" style="margin:10px 0 0">A rate card prices your audience. A valuation prices what one brand is taking from you. The example splits one real offer into those two parts.</p>`:''}
+  <div class="sec"><h2>Reference rates</h2><div class="card"><div class="tw"><table><tr><th>Item</th><th>Rate</th><th>How it applies</th></tr>${RATE_CARD.map(rr).join('')}</table></div></div>
+    <p class="muted small" style="margin-top:8px">Fixed reference parameters for your tier, calibrated to the demo data. They are not a market average.</p></div>
+  <div class="sec"><h2>Priced separately</h2><div class="card"><div class="tw"><table>${RATE_SEPARATE.map(rr).join('')}</table></div></div></div>
+  <div class="sec"><h2>Evidence behind these rates</h2><div class="card pad stack"><div><div class="lab">Your closed deals (Tier 1)</div><div class="mid num">${S.net.closed.map(INR).join('  |  ')}</div></div>
+    <div><div class="lab">Network median (Tier 2)</div><div class="mid num">${INR(S.net.median)} <span class="muted" style="font-size:15px;font-weight:600">· ${S.net.count} deals${S.net.synthetic!==false?' · demo data':''}</span></div></div>
+    <div class="status" style="margin-top:0">${confBadge('Medium')}<span>Medium confidence. Fewer than 5 of your own deals cannot raise it.</span></div></div></div>
+  ${full?'':`<p class="note acc" style="margin-top:16px">${ic('lock',18)}<span>The priced example and the export are part of the Pro plan. <a href="#" data-a="plan-set" data-p="Pro" style="color:var(--accent)">Switch to Pro (demo)</a></span></p>`}`;
+};
+
+/* consent-based sharing of a rate-checker result: anonymous, only when the visitor ticks the box */
+function followersBand(n){ if(!n) return null; return n<10000?'under 10K':n<25000?'10K to 25K':n<50000?'25K to 50K':n<=100000?'50K to 100K':'over 100K'; }
+async function shareCheck(){
+  const o=S.chkOut, c=S.chk; if(!o) return;
+  const box=document.getElementById('share_ok'); if(!box||!box.checked){ toast('Tick the consent box first.'); return; }
+  if(!useApi()){ toast('Sharing needs the live site.'); return; }
+  try{
+    const res=await fetch('/api/data?kind=share',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,platform:c.platform,followersBand:followersBand(+c.followers||0),deliverable:c.deliver,usage:c.usage,excl:c.excl,lastPaid:+c.last||null,low:o.low,high:o.high})});
+    const d=await res.json().catch(()=>null);
+    if(res.ok&&d&&d.ok){ S.shared=true; render(false); toast('Shared anonymously. Thank you.'); }
+    else if(d&&d.code==='share_unavailable') toast('Sharing is not switched on in this database yet.');
+    else toast('Could not share right now. Nothing was saved.');
+  }catch(e){ toast('Could not share right now. Nothing was saved.'); }
+}
+
+/* profile photo: downscale to about 256px so it is small enough to keep with the profile */
+function downscalePhoto(file,cb){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{ const r=Math.min(1,256/Math.max(img.width,img.height)), c=document.createElement('canvas'); c.width=Math.max(1,Math.round(img.width*r)); c.height=Math.max(1,Math.round(img.height*r)); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg',0.85)); };
+  img.onerror=()=>{ URL.revokeObjectURL(url); cb(null); };
+  img.src=url;
+}
+
+/* interface choices that should survive a reload: theme, hidden checklist, completed checklist items */
+function loadUi(){ try{ return JSON.parse(localStorage.getItem('creva_ui')||'{}')||{}; }catch(e){ return {}; } }
+function saveUi(){ try{ localStorage.setItem('creva_ui',JSON.stringify({theme:S.theme,hideStart:!!S.hideStart,done:S.done})); }catch(e){} }
+
 function applyTheme(){
   const t=S.theme, r=document.documentElement;
   if(t==='system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',t);
-  $('#rr').innerHTML=`<button class="pillbtn" data-a="theme" id="themeBtn">Theme: ${t[0].toUpperCase()+t.slice(1)}</button><button class="round" data-a="tour-start" aria-label="Take the tour" title="Take the tour">${ic('help',19)}</button><button class="round" data-a="go" data-r="contracts" aria-label="Contract alerts">${ic('bell',19)}<i></i></button><button class="who" data-a="go" data-r="profile" aria-label="Open your profile"><div class="av">${avatarHtml()}</div><span>${esc(firstName())}</span>${ic('chev',14)}</button>`;
+  $('#rr').innerHTML=`<button class="pillbtn" data-a="theme" id="themeBtn">Theme: ${t[0].toUpperCase()+t.slice(1)}</button><button class="round" data-a="tour-start" aria-label="Take the tour" title="Take the tour">${ic('help',19)}</button><button class="round" data-a="reminders" aria-label="Reminders">${ic('bell',19)}${remList().length?'<i></i>':''}</button><button class="who" data-a="go" data-r="profile" aria-label="Open your profile"><div class="av">${avatarHtml()}</div><span>${esc(firstName())}</span>${ic('chev',14)}</button>`;
 }
 S.theme='dark'; applyTheme();
-S.A=null; S.done={}; S.tour=null; S.hideStart=false; S.snap=JSON.stringify(S.profile); applyTheme();
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&S.link){ closeLink(); return; } if(e.key==='Enter'&&e.target.id==='topic_other'){ e.preventDefault(); const bt=document.querySelector('[data-a="topic-add"]'); if(bt) bt.click(); return; } if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.lk&&e.target.type!=='checkbox'&&S.link&&S.link.step==='form'){ e.preventDefault(); startAuth(); return; } if(e.key==='Escape'&&S.tour!=null){ $('#coach').dataset.k=''; tourEnd(); } });
+const UI=loadUi(); S.A=null; S.done=UI.done||{}; S.tour=null; S.hideStart=!!UI.hideStart; if(['dark','light','system'].includes(UI.theme)) S.theme=UI.theme; S.snap=JSON.stringify(S.profile); applyTheme();
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&S.remOpen){ S.remOpen=false; renderRem(); return; } if(e.key==='Escape'&&S.link){ closeLink(); return; } if(e.key==='Enter'&&e.target.id==='topic_other'){ e.preventDefault(); const bt=document.querySelector('[data-a="topic-add"]'); if(bt) bt.click(); return; } if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.lk&&e.target.type!=='checkbox'&&S.link&&S.link.step==='form'){ e.preventDefault(); startAuth(); return; } if(e.key==='Escape'&&S.tour!=null){ $('#coach').dataset.k=''; tourEnd(); } });
 render();
 bootstrapData();
 if(!tourSeen()) setTimeout(()=>{ if(S.tour==null&&S.route==='home'){ $('#coach').dataset.k=''; tourGo(0); } },700);

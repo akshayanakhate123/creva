@@ -26,13 +26,15 @@ const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) > 0 ? Number(process.env.AI
 const IP_PER_MIN = 10;
 const DAILY_LIMIT = 800; // stays under the documented 1K requests/day. Verify your own limits in the Groq console.
 const DISCLOSURE = 'All posts will carry the paid partnership label.';
-const STATUS = { bad_request: 400, too_large: 413, rate_limited: 429, upstream_error: 502, no_key: 503, timeout: 504 };
+const STATUS = { bad_request: 400, too_large: 413, rate_limited: 429, upstream_error: 502, no_key: 503, timeout: 504, plan_limit: 403, plan_locked: 403 };
 const MSG = {
   bad_request: 'The request was not valid.',
   too_large: 'The request was too large.',
   rate_limited: 'The live model is busy. Try again in a minute.',
   upstream_error: 'The live model gave an unusable answer.',
   no_key: 'The live model is not configured.',
+  plan_limit: 'The Free plan includes 2 analyses a month, and the ones for this month are used.',
+  plan_locked: 'This feature is part of the Pro plan.',
   timeout: 'The live model took too long.',
 };
 
@@ -132,6 +134,28 @@ async function readJson(request) {
   try { return { value: JSON.parse(text) }; } catch { return { error: 'bad_request' }; }
 }
 
+// Plan limits from the product spec: Free = rate checker, 2 analyses a month, basic rate card. Pro and Founding = everything.
+// The plan lives in the profile preferences. If the database cannot be read this fails open, so a database problem never blocks a creator.
+const FREE_ANALYSES = 2;
+async function planGate(sb, task) {
+  if (!sb) return null;
+  try {
+    const pr = await sb.from('profiles').select('preferences').eq('id', DEMO_USER);
+    if (pr.error || !pr.data || !pr.data[0]) return null;
+    if (((pr.data[0].preferences || {}).plan || 'Pro') !== 'Free') return null;
+    if (['contract', 'negotiate', 'autopsy'].includes(task)) return 'plan_locked';
+    if (task === 'deal') {
+      const d = new Date();
+      const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+      const r = await sb.from('analyses').select('result').eq('user_id', DEMO_USER).gte('created_at', start).limit(2000);
+      if (r.error) return null;
+      const n = r.data.filter((x) => x.result && x.result._task === 'deal' && x.result._reason !== 'test').length;
+      if (n >= FREE_ANALYSES) return 'plan_limit';
+    }
+  } catch { return null; }
+  return null;
+}
+
 async function dailyCapReached(sb) {
   if (sb) {
     try {
@@ -161,13 +185,13 @@ export default {
     const v = checked.value;
 
     // Guardrails first: no network call is made for these.
-    if (refusal(v.message)) return json({ ok: true, source: 'rule', result: { special: special(v.message) } });
+    if (refusal(v.message)) return json({ ok: true, source: 'rule', result: { special: special(v.message, { minFee: v.ctx.minFeeInr }) } });
     // An edit instruction that asks CreVa to send, accept or sign is refused here too, with no model call.
     if (v.instruction && (refusal(v.instruction) || /\b(send|accept|sign)\b/i.test(v.instruction))) {
       return json({ ok: true, source: 'rule', result: { special: special('Accept this contract and send it to the brand for me.') } });
     }
     if (['deal', 'contract', 'negotiate'].includes(v.task)) {
-      const sp = special(v.message);
+      const sp = special(v.message, { minFee: v.ctx.minFeeInr });
       if (sp) return json({ ok: true, source: 'rule', result: { special: sp } });
     }
 
@@ -176,6 +200,8 @@ export default {
     const model = (process.env.GROQ_MODEL || '').trim() || DEFAULT_MODEL;
 
     const sb = getSupabase();
+    const gate = await planGate(sb, v.task);
+    if (gate) return fail(gate);
     if (await dailyCapReached(sb)) return fail('rate_limited', { retry_after: 3600 });
 
     // The engine runs on the server too, so the numbers do not depend on the browser or the model.
