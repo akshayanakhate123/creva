@@ -10,7 +10,7 @@
 // Writes are validated, size-capped, rate-limited per IP and same-origin only. There is no login by design.
 import { getSupabase, supabaseConfigured, DEMO_USER } from '../lib/supabase.js';
 import { clientIp, ipLimited } from '../lib/limits.js';
-import { validateProfile, validateContract, validateEval, profileFromRow, contractFromRow, analysisFromRow, median, MAX_CONTRACTS } from '../lib/data.js';
+import { validateProfile, validateContract, validateEval, validateEvent, profileFromRow, contractFromRow, analysisFromRow, median, MAX_CONTRACTS } from '../lib/data.js';
 
 const MAX_BODY = 45_000;
 const STATUS = { bad_request: 400, too_large: 413, rate_limited: 429, db_not_configured: 503, db_unavailable: 503 };
@@ -56,7 +56,23 @@ const DB_TIMEOUT_MS = 4000; // a paused or unreachable project must not leave th
 async function handle(request, kind, sb) {
   if (request.method === 'GET' && kind === 'bootstrap') return json(await bootstrap(sb));
 
-  if (request.method === 'POST' && ['profile', 'contract', 'eval'].includes(kind)) {
+  if (request.method === 'GET' && kind === 'metrics') {
+    // Live versus fallback over the last 30 days. Guardrail answers that never reach the model are not counted.
+    const since = new Date(Date.now() - 30 * 86400_000).toISOString();
+    const rows = must(await sb.from('analyses').select('source,result').eq('user_id', DEMO_USER).gte('created_at', since).order('created_at', { ascending: false }).limit(5000));
+    const byTask = {};
+    let live = 0, fallback = 0;
+    for (const r of rows) {
+      if (r.result && r.result._reason === 'test') continue; // rows written by tests are not counted
+      const task = (r.result && r.result._task) || (r.result && r.result.fair_low != null ? 'deal' : 'other');
+      byTask[task] = byTask[task] || { live: 0, fallback: 0 };
+      if (r.source === 'live') { live++; byTask[task].live++; } else if (r.source === 'fallback') { fallback++; byTask[task].fallback++; }
+    }
+    const total = live + fallback;
+    return json({ ok: true, windowDays: 30, live, fallback, fallbackRate: total ? Math.round((fallback / total) * 1000) / 10 : null, byTask });
+  }
+
+  if (request.method === 'POST' && ['profile', 'contract', 'eval', 'event'].includes(kind)) {
     const body = await readJson(request);
     if (body.error) return fail(body.error);
 
@@ -72,6 +88,12 @@ async function handle(request, kind, sb) {
       const existing = must(await sb.from('contracts').select('id').eq('user_id', DEMO_USER));
       if (existing.length >= MAX_CONTRACTS && !existing.some((r) => r.id === v.value.id)) return fail('bad_request');
       must(await sb.from('contracts').upsert(v.value, { onConflict: 'id' }));
+      return json({ ok: true });
+    }
+    if (kind === 'event') {
+      const v = validateEvent(body.value);
+      if (v.error) return fail(v.error);
+      must(await sb.from('analyses').insert(v.value));
       return json({ ok: true });
     }
     const v = validateEval(body.value);

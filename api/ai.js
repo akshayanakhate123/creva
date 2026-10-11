@@ -17,7 +17,7 @@ import { callGroq, GroqError } from '../lib/groq.js';
 import { clientIp, ipLimited, memDaily } from '../lib/limits.js';
 import { getSupabase, DEMO_USER } from '../lib/supabase.js';
 import {
-  validateInput, schemaFor, reconcileDeal, reconcileContract, validateAutopsy, validateDraft, defang,
+  validateInput, schemaFor, reconcileDeal, reconcileContract, validateAutopsy, validateDraft, defang, allowedFigures, uncited,
   MAX_BODY_BYTES, MAX_CONTRACT, MAX_INPUT_CHARS, MAX_OUTPUT_TOKENS,
 } from '../lib/validate.js';
 
@@ -200,11 +200,13 @@ export default {
     if (!m || typeof m !== 'object' || Array.isArray(m)) return fail('upstream_error');
 
     let result;
-    if (v.task === 'deal') result = reconcileDeal(E, m);
-    else if (v.task === 'contract') result = reconcileContract(E, m, v.contract, missingTerms);
+    // Evidence integrity: a rupee figure in model text must be an engine number or come from the creator's own text.
+    const allowed = E ? allowedFigures(E, v.message + '\n' + v.contract + '\n' + v.draft) : null;
+    if (v.task === 'deal') result = reconcileDeal(E, m, allowed);
+    else if (v.task === 'contract') result = reconcileContract(E, m, v.contract, missingTerms, allowed);
     else if (v.task === 'negotiate') {
       const p = { max: E.counter.max, rel: E.counter.rel, pres: E.counter.pres }[v.mode || 'max'];
-      const d = validateDraft(m, p, INR, DISCLOSURE, v.message + '\n' + v.contract);
+      const d = validateDraft(m, p, INR, DISCLOSURE, v.message + '\n' + v.contract, allowed);
       if (!d) return fail('upstream_error');
       result = { mode: v.mode || 'max', price: p, ...d };
     } else if (v.task === 'autopsy') {
@@ -213,8 +215,10 @@ export default {
       result = a;
     } else {
       const c = checkRate(v.ctx.checker);
-      const narrow = Array.isArray(m.narrow) ? m.narrow.filter((x) => typeof x === 'string' && x.length > 8 && x.length < 220).slice(0, 5) : [];
-      result = { low: c.low, high: c.high, confidence: c.conf, tier: c.tier, drivers: c.drivers, summary: typeof m.summary === 'string' ? m.summary.slice(0, 240) : '', narrow: narrow.length >= 2 ? narrow : c.narrow };
+      const okAmounts = allowedFigures(null, '', [c.low, c.high, c.mid, v.ctx.checker.last, ...c.drivers.map((d) => d[1])]);
+      const narrow = Array.isArray(m.narrow) ? m.narrow.filter((x) => typeof x === 'string' && x.length > 8 && x.length < 220 && !uncited(x, okAmounts).length).slice(0, 5) : [];
+      const summary = typeof m.summary === 'string' && !uncited(m.summary, okAmounts).length ? m.summary.slice(0, 240) : '';
+      result = { low: c.low, high: c.high, confidence: c.conf, tier: c.tier, drivers: c.drivers, summary, narrow: narrow.length >= 2 ? narrow : c.narrow };
     }
 
     // Record the analysis. A failed insert must never stop the answer.

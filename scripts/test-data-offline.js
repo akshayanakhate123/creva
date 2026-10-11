@@ -2,7 +2,7 @@
 delete process.env.SUPABASE_URL;
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 const { default: handler } = await import('../api/data.js');
-const { validateProfile, validateContract, validateEval, toDbContractId, fromDbContractId } = await import('../lib/data.js');
+const { validateProfile, validateContract, validateEval, validateEvent, toDbContractId, fromDbContractId } = await import('../lib/data.js');
 let failed = false;
 const ok = (name, pass, note = '') => { console.log((pass ? 'PASS ' : 'FAIL ') + name + (note ? ' - ' + note : '')); if (!pass) failed = true; };
 
@@ -35,4 +35,9 @@ ok('contract id mapping round-trips', fromDbContractId(toDbContractId('ledgerly'
 ok('contract with bad id rejected', validateContract({ id: 'a b', brand: 'X', body: 'text' }).error === 'bad_request');
 ok('oversize contract rejected', validateContract({ id: 'x', brand: 'X', body: 'a'.repeat(40000) }).error === 'too_large');
 ok('eval needs a boolean passed', validateEval({ prompt: 'p', passed: 'yes' }).error === 'bad_request' && validateEval({ prompt: 'p', passed: true }).value.passed === true);
+const ev = validateEvent({ event: 'fallback', task: 'deal', reason: 'rate_limited', brand: 'GlowSkin' });
+ok('fallback event validates and is stored as a fallback analysis', ev.value && ev.value.source === 'fallback' && ev.value.result._task === 'deal' && ev.value.result._reason === 'rate_limited');
+ok('event with an unknown task or event type is rejected', validateEvent({ event: 'fallback', task: 'drop' }).error === 'bad_request' && validateEvent({ event: 'other', task: 'deal' }).error === 'bad_request');
+const c2 = validateContract({ id: 'x', brand: 'X', body: 'some contract text', issueStates: { indemnity: 'reviewed', liability: 'cleared', tax: 'dismissed' } });
+ok('new issue keys (indemnity, liability, tax) can be saved', JSON.stringify(c2.value.issue_states) === JSON.stringify({ indemnity: 'reviewed', liability: 'cleared', tax: 'dismissed' }));
 process.exit(failed ? 1 : 0);

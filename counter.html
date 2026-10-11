@@ -409,9 +409,9 @@ EVERY PRICING OUTPUT MUST CONTAIN:
 - the main drivers of the number, with rights priced separately from content
 - the material unknowns
 
-CONTRACTS: explain commercial consequence in plain language. Never reach a legal conclusion. Escalate to professional review when deal value is high, the jurisdiction is unusual, the clause assigns IP outright rather than licensing it, or your confidence in interpreting it is low.
+CONTRACTS: explain commercial consequence in plain language. Never reach a legal conclusion. Escalate to professional review when deal value is high, the jurisdiction is unusual, the clause assigns IP outright rather than licensing it, the clause concerns liability or indemnity, or your confidence in interpreting it is low. Questions about tax (GST, TDS) go to a CA.
 
-PERFORMANCE: separate observed metrics from hypotheses. If the data does not distinguish between plausible causes, say "I don't have enough evidence to identify why this happened." Never blame the algorithm, the hook, the posting time or the audience without evidence.
+PERFORMANCE: separate observed metrics (Evidence) from hypotheses (Inference) and from what is not known (Unknown). If the data does not distinguish between plausible causes, say "I don't have enough evidence to identify why this happened." Never blame the algorithm, the hook, the posting time or the audience without evidence.
 
 NEGOTIATION: always an editable draft, never a sent message. Always offer a scope-reduction option alongside a price-increase option. Name the terms that drive the number inside the draft.
 
@@ -469,6 +469,8 @@ function parseAmount(msg){
   const re=/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)\s*(k|l|lakh)?/gi; let m;
   while((m=re.exec(msg))){ let v=parseFloat(m[1].replace(/,/g,'')); const u=(m[2]||'').toLowerCase(); if(u==='k')v*=1000; else if(u==='l'||u==='lakh')v*=100000; if(v>=1000)return v; }
   const k=msg.match(/\b(\d+(?:\.\d+)?)\s*k\b/i); if(k)return parseFloat(k[1])*1000;
+  // last resort: a comma-grouped number such as "25,000" (not a follower or view count)
+  const b=msg.match(/\b(\d{1,3}(?:,\d{3})+)\b(?!\s*(?:followers|views|likes|subscribers|people))/i); if(b)return parseFloat(b[1].replace(/,/g,''));
   return null;
 }
 function dayVal(n,unit){ unit=unit.toLowerCase(); return unit.startsWith('month')?n*30:unit.startsWith('week')?n*7:n; }
@@ -501,6 +503,9 @@ function parseTerms(raw){
   T.payDays=p?+p[1]:null;
   T.ipAssign=/assign(?:s|ed)? (?:all )?(?:rights|copyright|ownership)|work made for hire|owns? all (?:rights|content)/.test(t);
   T.skincare=/skincare|serum|skin care|cosmetic/.test(t);
+  T.indemnity=/indemnif|indemnity|hold harmless/.test(t);
+  T.liability=/liabilit(?:y|ies)|uncapped|unlimited damages|consequential damages/.test(t);
+  T.tax=/\b(?:tds|gst|withholding tax|income tax|taxes|tax)\b/.test(t);
   return T;
 }
 
@@ -547,26 +552,32 @@ function analyze(msg, con){
   else if(T.payDays>=60) A.lines.push({label:'Minus net-'+T.payDays+' payment',amount:-1000,group:'finance'});
   if(T.perp) A.unpriced.push({label:'Perpetual usage',amount:15000});
   if(T.raw) A.unpriced.push({label:'Raw footage handover',amount:4000});
+  A.lockout=null;
+  if(!hasDeliv && T.exclMonths>0){ const mo=Math.round(T.exclMonths*10)/10; A.lockout={months:mo,amount:Math.round(mo*2000),category:T.skincare?'skincare':'competing-category'}; }
   A.indicative = A.lines.reduce((s,l)=>s+l.amount,0);
   A.content = A.lines.filter(l=>l.group==='content').reduce((s,l)=>s+l.amount,0);
   A.rights = A.lines.filter(l=>l.group==='rights').reduce((s,l)=>s+l.amount,0);
   A.finance = A.lines.filter(l=>l.group==='finance').reduce((s,l)=>s+l.amount,0);
 
   // evidence + confidence
+  const TIER1_N=3, TIER2_N=12, MIN_N=5; // guardrail: fewer than 5 deals behind a number can never carry more than Low
   const rightsHeavy = T.paid||T.perp||T.exclMonths!==0&&!T.exclNone||T.ipAssign;
   const plainReel = T.reels>0 && !rightsHeavy && !T.barter;
   if(P.isOther){
     A.confidence='Low'; A.evidence={tier:3,count:0,text:'Tier 3 · 0 deals. No closed deals or network comparables were given for this creator.'};
-  } else if(plainReel){
-    A.confidence='High'; A.evidence={tier:1,count:3,text:'Tier 1 · 3 of your closed deals (₹42K, ₹51K, ₹57K), with Tier 2 as cross-check'};
+  } else if(plainReel && TIER1_N>=MIN_N){
+    A.confidence='High'; A.evidence={tier:1,count:TIER1_N,text:'Tier 1 · '+TIER1_N+' of your closed deals, with Tier 2 as cross-check'};
+  } else if(TIER2_N>=MIN_N){
+    A.confidence='Medium';
+    A.evidence={tier:2,count:TIER2_N,text:plainReel
+      ? 'Tier 2 · 12 network deals (median ₹54K). Your own 3 closed deals (₹42K, ₹51K, ₹57K) are under 5, so they cross-check the content base but cannot raise confidence.'
+      : 'Tier 2 · 12 network deals (median ₹54K). Your own 3 deals inform the content base only.'};
   } else {
-    A.confidence='Medium'; A.evidence={tier:2,count:12,text:'Tier 2 · 12 network deals (median ₹54K). Your own 3 deals inform the content base only.'};
+    A.confidence='Low'; A.evidence={tier:3,count:0,text:'Tier 3 · fewer than 5 comparable deals, so confidence stays Low.'};
   }
   const rnd=n=>Math.round(n/1000)*1000;
-  if(P.isOther && P.followers){
-    A.rangeUnavailable='CreVa does not price from follower count and engagement alone. It needs views, reach or closed deals to give a range.';
-  } else if(!hasDeliv){
-    A.rangeUnavailable='CreVa could not find deliverables in the text, so it cannot build a range yet.';
+  if(!hasDeliv){
+    A.rangeUnavailable='CreVa could not find deliverables in the text, so it cannot build a range for the content yet.';
   } else if(A.confidence==='Low'){
     A.low=rnd(A.indicative*0.7); A.high=rnd(A.indicative*1.15);
   } else {
@@ -616,6 +627,28 @@ function analyze(msg, con){
   if(T.usageDays!=null && T.usageDays>=90 && !T.perp && !T.paid){
     add({key:'usage',sev:'LOW',title:Math.round(T.usageDays/30)+'-month organic usage',clause:'in your message',quote:Math.round(T.usageDays/30)+' months',line:'Brand reposts for '+Math.round(T.usageDays/30)+' months on its own channels.',reading:'Organic reposting by the brand for '+Math.round(T.usageDays/30)+' months.',consequence:'Reasonable for organic use. A cap at 90 days, or a small fee for extension, is a minor counter.',suggestion:'Offer 90 days with a renewal fee.'});
   }
+  if(T.indemnity){ const c=clauseOf(C,/indemnif|indemnity|hold harmless/i);
+    add({key:'indemnity',sev:'HIGH',title:'Indemnity obligation',clause:c&&c.ref?'clause '+c.ref:(C?'clause not located':'in your message'),quote:quoteFrom(c,/indemnif[^.]*|indemnity[^.]*|hold harmless[^.]*/i)||'indemnity',
+      line:'You may have to cover the brand\'s losses and legal costs.',reading:'If someone makes a claim about the content, you may be asked to pay the brand\'s costs and losses.',
+      consequence:'A claim about your content could turn into a bill you pay, on top of a fee that does not price that risk.',
+      suggestion:'Ask to cap it at the fee you receive, limit it to claims caused by your own content, and have a lawyer read it before you sign.'}); }
+  if(T.liability){ const c=clauseOf(C,/liabilit|uncapped|damages/i);
+    add({key:'liability',sev:'HIGH',title:'Liability or damages terms',clause:c&&c.ref?'clause '+c.ref:(C?'clause not located':'in your message'),quote:quoteFrom(c,/[^.]*(?:liabilit|uncapped|damages)[^.]*/i)||'liability',
+      line:'Liability may be uncapped or one-sided.',reading:'The text mentions liability or damages. CreVa cannot tell who carries the risk or how far it goes.',
+      consequence:'If liability is not capped, one dispute could cost you far more than the fee you were paid.',
+      suggestion:'Ask for liability to be capped at the fee, and have a lawyer read this clause before you sign.'}); }
+  if(T.tax){ const c=clauseOf(C,/\b(?:tds|gst|tax)/i);
+    add({key:'tax',sev:'LOW',title:'Tax terms (GST or TDS)',clause:c&&c.ref?'clause '+c.ref:(C?'clause not located':'in your message'),quote:quoteFrom(c,/[^.]*\b(?:tds|gst|tax)[^.]*/i)||'tax',
+      line:'Who bears GST or TDS changes what you actually receive.',reading:'The text mentions tax. It may change the amount that reaches your account.',
+      consequence:'If tax is deducted, or GST is not added on top of the fee, you receive less than the headline number.',
+      suggestion:'Confirm with a CA how GST and TDS apply, and ask for the fee to be stated plus GST if you are registered.'}); }
+  const VAL={perpetual:'Not in the indicative value. About '+INR(15000)+' if priced as a separate licence.',
+    exclusivity:T.exclMonths>0?'+'+INR(Math.round(T.exclMonths*2000))+' at CreVa\'s reference rate':'',
+    payment:T.payDays>=90?'-'+INR(2000)+' cash-flow cost':(T.payDays>=60?'-'+INR(1000)+' cash-flow cost':''),
+    revisions:T.revisions>1?'+'+INR((T.revisions-1)*1500):'',paidmedia:'+'+INR(10000),usage:'+'+INR(6000),
+    ip:'Not priced. Needs a lawyer.',indemnity:'Not priced. Needs a lawyer.',liability:'Not priced. Needs a lawyer.',tax:'Not priced. Check with a CA.',
+    barter:T.productValue?INR(T.productValue)+' of product, no cash':'No cash fee'};
+  A.risks.forEach(r=>{ if(!r.value&&VAL[r.key]) r.value=VAL[r.key]; });
   A.risks.sort((a,b)=>SEVR[b.sev]-SEVR[a.sev]);
 
   if(T.raw) A.noted.push('Raw footage and project files handover (priced at about '+INR(4000)+' if included)');
@@ -628,19 +661,28 @@ function analyze(msg, con){
   if(P.isOther && !P.followers) A.unknown.push('Your own closed deals and average views are not known, so this rests on CreVa\'s reference model.');
   if(P.isOther && P.followers) A.unknown.push('Average views per Reel, saves and shares per 1K views, and any closed deals.');
   if(T.barter && !T.productValue) A.unknown.push('Product value is not stated.');
+  if(!hasDeliv) A.unknown.push('Deliverables are not stated, so the content cannot be priced.');
   if(P.isOther && P.never) A.unknown.push('Which platform audience and seniority the post would reach is not given.');
 
   // verdict
   const hasPerp=T.perp;
   if(T.barter) A.headline='Barter value is about '+(T.productValue&&A.indicative?Math.round(T.productValue/A.indicative*100):'a small share of')+(T.productValue&&A.indicative?'%':'')+' of reference content value.';
+  else if(A.lockout) A.headline='The '+A.lockout.months+'-month exclusivity is the issue here: it blocks every '+A.lockout.category+' offer for '+A.lockout.months+' months and is worth about '+INR(A.lockout.amount)+' on its own at CreVa\'s reference rate'+(A.ask!=null?', and the '+INR(A.ask)+' fee does not say what content it buys':'')+'. CreVa cannot price the content without the deliverables.';
   else if(A.rangeUnavailable) A.headline='CreVa cannot range this offer from what was given.';
-  else if(P.isOther && P.followers && P.engagement!=null && P.engagement<1) A.headline='Follower count does not set this price. '+P.engagement+'% engagement is the first thing a brand will question.';
+  else if(P.isOther && P.followers && P.engagement!=null && P.engagement<1) A.headline='Follower count does not set this price. '+P.engagement+'% engagement is the first thing a brand will question. CreVa\'s directional range for one Reel is '+INR(A.low)+' to '+INR(A.high)+' (Tier 3, Low confidence), and it is not scaled to your followers.';
   else if(hasPerp) A.headline='The licence, not the fee, is the headline issue. The fee prices content; the contract also grants an advertising licence with no end date.'+(A.ask!=null&&A.low!=null&&A.ask<A.low?' The fee is also '+INR(A.low-A.ask)+' below range.':'');
   else if(A.confidence==='Low'&&A.ask!=null&&A.low!=null) A.headline=(A.ask>=A.low&&A.ask<=A.high?INR(A.ask)+" sits inside CreVa's directional range":INR(A.ask)+" sits outside CreVa's directional range")+', but confidence is Low: no deal history was given.';
   else if(A.ask!=null && A.ask>=A.low) A.headline='Priced fairly for this scope. '+(A.risks.length?'One minor point to counter.':'No material risks found.');
   else if(A.ask!=null) A.headline='The offer is '+INR(A.low-A.ask)+' to '+INR(A.indicative-A.ask)+' below the range for this scope.';
   else A.headline='No fee was found in the message.';
-  A.escalate = !!(T.ipAssign || (A.ask!=null && A.ask>=25000) || T.perp);
+  A.escalateWhy=[];
+  if(T.ipAssign) A.escalateWhy.push('the contract assigns your rights outright');
+  if(T.indemnity) A.escalateWhy.push('it asks you to indemnify the brand');
+  if(T.liability) A.escalateWhy.push('it mentions liability or damages');
+  if(T.perp) A.escalateWhy.push('the usage licence has no end date');
+  if(A.ask!=null && A.ask>=25000) A.escalateWhy.push('the deal value is high');
+  A.taxNote=!!T.tax;
+  A.escalate = A.escalateWhy.length>0;
   A.counter={};
   if(A.indicative>0){
     const ask0=A.ask||0;
@@ -699,6 +741,11 @@ function special(msg){
   if(/(flop|underperform|why did)[^.?]*\b(reel|post|video)\b|\b(reach|views)[^.?]*\b(down|dropped|lower)\b/i.test(m) && !/offer|brand/i.test(m)) return {kind:'flop',badge:'Insufficient evidence',title:'I don\'t have enough evidence to identify why this happened.',
     body:['Reach is well below your median, but the other metrics you gave are normal. That does not point to one cause. A distribution cause and a content cause look the same with this data.','What would help: first-3-second retention, saves and shares per 1K views, and posting time compared with your usual window. Open Growth, then Post Autopsy, to compare against your baseline.'],
     conf:'Confidence: insufficient evidence',actions:[['OPEN POST AUTOPSY','autopsy']]};
+  if(/follow(?:ers|er count)[^.?]*?(?:\bup\b|\bgrew\b|\bgrowth\b|\bincreased?\b|\brose\b|\+\s*\d+\s*%)[^.?]*?\b(?:deals?|rates?|income|offers?|pay|price)\b[^.?]*?(?:\bflat\b|\bsame\b|\bstuck\b|\bnot (?:grow|rise|increase|change|move)|\bno change\b|\bhaven'?t)/i.test(m)) return {kind:'growth',badge:'Correlation, not cause',title:'More followers does not by itself raise what brands pay.',
+    body:['Followers rising while deals stay flat is consistent with several things: your audience is bigger but not more engaged, brands are weighing reach and saves instead of followers, or you have not asked for more yet. With this data I cannot tell which.',
+      'In the numbers CreVa has, non-follower reach and saves per 1K views are the signals more closely associated with stronger pricing across creators like you. That is a correlation across a cohort. It is not a lever, so improving them is not guaranteed to move your rate.',
+      'Three tests you can run: (1) over your next three posts, track non-follower reach and saves per 1K views against your baseline; (2) ask your last two brands which numbers they looked at; (3) quote your next offer at the top of CreVa\'s range and see whether the brand moves.'],
+    conf:'Confidence: Low. No pricing data was given.',actions:[['OPEN RATE GROWTH','rategrowth']]};
   if(/walk away|should i (?:take|walk|say no|accept)/i.test(m)){
     const amt=parseAmount(m);
     return {kind:'walk',badge:'Trade-off, your call',title:'Walking away is one option. It is not the only one.',
@@ -738,7 +785,7 @@ function checkRate(f){
   if(f.eng==null)narrow.push('Your engagement rate.');
   narrow.push(li?'Who sees your posts: seniority, industry and company size of your audience.':'Non-follower reach, and saves and shares per 1K views.');
   if(f.usage==='paid'||f.usage==='perp')narrow.push('How long the brand can run it as an ad, and in which markets.');
-  return {low:r(mid*lo),high:r(mid*hi),mid:r(mid),conf:hasLast?'Medium':'Low',tier:hasLast?'Tier 1 · 1 deal you reported':'Tier 3 · no deals given',deliv:d.n,drivers,narrow,perpNote:f.usage==='perp'?'Perpetual usage is not in this range. It needs its own licence fee or a fixed end date.':'',li};
+  return {low:r(mid*lo),high:r(mid*hi),mid:r(mid),conf:'Low',tier:hasLast?'Tier 1 · 1 deal you reported (under 5, so confidence stays Low)':'Tier 3 · no deals given',deliv:d.n,drivers,narrow,perpNote:f.usage==='perp'?'Perpetual usage is not in this range. It needs its own licence fee or a fixed end date.':'',li};
 }
 
 /* ============ state ============ */
@@ -853,7 +900,7 @@ async function runAnalysis(){
   try{
     S.A=await liveDeal(E,S.ctrl.signal); S.mode='live'; S.reason='';
     pushHistory(S.A);
-  }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); }
+  }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); logFallback('deal',err); }
   S.busy=false; S.ctrl=null; if(S.A) S.A.pending=false;
   if(S.route==='rate'||S.route==='breakdown'||S.route==='negotiate') render();
 }
@@ -1038,7 +1085,7 @@ V.rate=()=>{
     <div class="cells">
       <div>${ib('tag')}<div><div class="lab">Fair value range</div>${pend?`<div class="skel" style="height:30px;width:140px"></div>`:rangeCell}</div></div>
       <div>${ib('rate')}<div><div class="lab">Confidence</div>${pend?`<div class="skel" style="height:30px;width:100px"></div>`:`<div class="mid">${A.confidence}</div><div class="sevbar" style="margin-top:8px">${[1,2,3].map(i=>`<i class="${i<=rk[A.confidence]?'on':''}"></i>`).join('')}</div>`}</div></div>
-      <div>${ib('layers')}<div><div class="lab">Evidence</div>${pend?`<div class="skel" style="height:30px;width:120px"></div>`:`<div class="mid">Tier ${A.evidence.tier} <span class="muted" style="font-size:16px;font-weight:600">· ${A.evidence.count} deal${A.evidence.count===1?'':'s'}</span></div><div class="muted small" style="margin-top:4px">${esc(A.evidence.text)}</div>`}</div></div>
+      <div>${ib('layers')}<div><div class="lab">Evidence</div>${pend?`<div class="skel" style="height:30px;width:120px"></div>`:`<div class="mid">Tier ${A.evidence.tier} <span class="muted" style="font-size:16px;font-weight:600">· ${A.evidence.count} deal${A.evidence.count===1?'':'s'}</span></div><div class="muted small" style="margin-top:4px">${esc(A.evidence.text)}</div>${A.evidence.tier===2&&S.net.synthetic!==false?`<div class="muted small" style="margin-top:4px">Demo data: the 12 network deals are illustrative.</div>`:''}`}</div></div>
     </div>
     ${pend?`<p class="note" style="margin-top:12px">Analysing with the live model... The terms below were already read from your text.</p>`:`<p style="margin-top:16px;font-size:17px;font-weight:600;max-width:72ch;text-wrap:balance">${esc(A.headline)}</p>`}
     </div>
@@ -1046,6 +1093,7 @@ V.rate=()=>{
     <div class="sec"><h2>Key risks, ranked</h2>${pend?`<div class="card pad">${skel(4)}</div>`:
       (A.risks.length?`<div class="card">${A.risks.map(r=>`<div class="rrow" data-a="go" data-r="contracts" role="button" tabindex="0">${sevPill(r.sev)}${stTag(r.key)}<div class="t"><b>${esc(r.title)}</b><span>${esc(r.line)}</span></div>${ic('arrow',18)}</div>`).join('')}</div>`:`<div class="card pad"><span class="sev ok">Clear</span> <span style="margin-left:8px">No material risks found in the text provided.</span></div>`)}</div>
     <div class="sec"><h2>Unknown</h2><div class="card pad" style="border-color:var(--accent)"><p style="font-weight:600;margin-bottom:8px">What CreVa could not determine from what it was given</p>${pend?skel(2):`<ul style="margin:0;padding-left:18px;display:grid;gap:4px">${A.unknown.map(u=>`<li>${esc(u)}</li>`).join('')||'<li>Nothing material is missing from the text provided.</li>'}</ul>`}</div></div>
+    ${A.escalate&&!pend?`<div class="note warn" style="margin-top:18px">${ic('alert',18)}<span><b>CreVa explains commercial consequences, not legal validity. Consider professional legal review before signing.</b> Why: ${esc(A.escalateWhy.join('; '))}.</span></div>`:''}${A.taxNote&&!pend?`<div class="note" style="margin-top:12px">${ic('alert',18)}<span>The text mentions tax (GST or TDS). Check how it applies with a CA.</span></div>`:''}
     <div class="sec" style="display:flex;flex-wrap:wrap;gap:12px"><button class="btn p" data-a="go" data-r="breakdown" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>See the breakdown</button><button class="btn" data-a="review-current" ${pend?'disabled':''}>Review contract</button><button class="btn" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||pend?'disabled':''}>Build a counter</button></div>
     <p class="muted small" style="margin-top:14px">CreVa gives estimates with evidence behind them. It does not accept, sign or send anything for you.</p>`;
   } else {
@@ -1076,6 +1124,7 @@ V.breakdown=()=>{
       ${rows.join('')}
     </div>
     ${A.unpriced.length?`<p class="note warn" style="margin-top:12px">Not in this number: ${A.unpriced.map(u=>esc(u.label)+' (about '+INR(u.amount)+' if priced)').join(' and ')}. These are licence-level asks. CreVa recommends removing them or pricing a separate licence.</p>`:''}
+    ${A.ask!=null&&A.ask>0&&A.indicative>0?`<p class="muted small" style="margin-top:12px">Their offer of ${INR(A.ask)} is ${Math.round(A.ask/A.indicative*100)}% of the indicative value.</p>`:''}
   </div>
   <div class="sec"><h2>Content versus rights</h2><div class="card pad">
     <div class="split"><i style="width:${A.content/tot*100}%;background:var(--accent)"></i><i style="width:${A.rights/tot*100}%;background:var(--rights)"></i></div>
@@ -1084,7 +1133,7 @@ V.breakdown=()=>{
   </div></div>
   <div class="sec"><h2>Evidence behind the number</h2><div class="card"><div class="tw"><table>
     <tr><td style="width:190px"><b>Tier 1, your deals</b></td><td>${tier1&&!A.P.isOther?'₹42K, ₹51K, ₹57K':'None given'}</td></tr>
-    <tr><td><b>Tier 2, network</b></td><td>${A.P.isOther?'None given':'12 comparable, median ₹54K'}</td></tr>
+    <tr><td><b>Tier 2, network</b></td><td>${A.P.isOther?'None given':'12 comparable, median ₹54K (demo data)'}</td></tr>
     <tr><td><b>Tier 3, benchmark</b></td><td>Directional only</td></tr>
     <tr><td><b>Confidence</b></td><td>${confBadge(A.confidence)}</td></tr>
     <tr><td><b>Biggest unknown</b></td><td>${esc(A.unknown[0]||'None material')}</td></tr></table></div></div>
@@ -1165,12 +1214,12 @@ V.contracts=()=>{
   ${S.cbusy?`<p class="note" style="margin-bottom:14px">Live model is rewriting the readings in plain language. The issues below are already read from your text.</p>`:''}
   <div class="card">${R.map(r=>{ const s=stOf(c,r.key); return `<div class="issue ${s!=='open'?'handled':''}"><div class="hd">${sevPill(r.sev)}<h3>${esc(r.title)}</h3><span class="mono muted small">${esc(r.clause)}</span>${s!=='open'?`<span class="sev ${ISC[s]}" style="margin-left:auto">${ISL[s]}</span>`:''}</div>
     ${r.quote?`<div class="quote">"${esc(r.quote)}"</div>`:''}
-    <dl class="kv" style="margin:0"><dt>Plain reading</dt><dd>${esc(r.reading)}</dd><dt>For you</dt><dd>${esc(r.consequence)}</dd><dt>Suggested ask</dt><dd>${esc(r.suggestion)}</dd></dl>
+    <dl class="kv" style="margin:0">${r.value?`<dt>Priced at</dt><dd>${esc(r.value)}</dd>`:''}<dt>Plain reading</dt><dd>${esc(r.reading)}</dd><dt>For you</dt><dd>${esc(r.consequence)}</dd><dt>Suggested ask</dt><dd>${esc(r.suggestion)}</dd></dl>
     <div class="iact"><span class="muted small">Your call</span>${act(r,'reviewed','Mark reviewed','You have read it and still want to raise it.')}${act(r,'cleared','Clear','The brand fixed or removed it.')}${act(r,'dismissed','Dismiss','Not a concern for you. CreVa stops arguing it in your counter.')}${s!=='open'?`<button type="button" class="iabtn" data-a="issue" data-k="${r.key}" data-s="open">Reopen</button>`:''}</div>
     <div class="muted small">${s==='dismissed'?'Dismissed: left out of your counter draft.':(s==='cleared'?'Cleared: left out of your counter draft.':'Reviewed keeps it in your counter draft. Clear means the brand fixed it. Dismiss means it is not a concern for you.')}</div></div>`; }).join('')||`<div class="pad"><span class="sev ok">Clear</span> <span style="margin-left:8px">No issues found in the text provided.</span></div>`}</div>
   ${A.noted.length?`<p class="muted small" style="margin-top:8px">Also noted, not ranked: ${esc(A.noted.join('; '))}.</p>`:''}
   <div class="sec"><h2>What's missing</h2><div class="card">${miss.length?`<div class="tw"><table>${miss.map(m=>`<tr><td style="width:230px"><b>${esc(m.term)}</b></td><td>${esc(m.why)}</td></tr>`).join('')}</table></div>`:'<div class="pad">Nothing standard is absent.</div>'}</div><p class="muted small" style="margin-top:8px">Absent terms count as findings. A contract that is silent leaves the point open to dispute.</p></div>
-  ${A.escalate?`<div class="note warn" style="margin-top:20px">${ic('alert',18)}<span><b>I cannot determine the legal effect of this clause. Consider professional legal review before signing.</b> Deal value, the licence terms or an assignment of rights make this worth a lawyer's time.</span></div>`:''}
+  ${A.escalate?`<div class="note warn" style="margin-top:20px">${ic('alert',18)}<span><b>I cannot determine the legal effect of this clause. Consider professional legal review before signing.</b> Why: ${esc((A.escalateWhy||[]).join('; '))}.</span></div>`:''}${A.taxNote?`<div class="note" style="margin-top:12px">${ic('alert',18)}<span>The text mentions tax (GST or TDS). Check how it applies with a CA.</span></div>`:''}
   <div class="status">${S.cMode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' wrote the plain-language readings.':(S.cMode==='fallback'?'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+'). Readings are from built-in templates.':'')}</div>
   <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||!A.counter.max?'disabled':''}>Build a counter from these</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
 };
@@ -1238,7 +1287,7 @@ async function aiDraft(extra){
     if(!/paid partnership/i.test(d)) d+='\n\n'+DISC;
     if(!S.draftDirty || extra){ if(mode===S.cMode){ S.draft=d; S.draftDirty=!!extra; } }
     S.nmode='live'; S.nreason='';
-  }catch(err){ S.nmode='fallback'; S.nreason=reasonOf(err); if(extra) toast('Live model unavailable ('+S.nreason+'), so the draft was not rewritten. Edit it by hand.'); }
+  }catch(err){ S.nmode='fallback'; S.nreason=reasonOf(err); logFallback('negotiate',err); if(extra) toast('Live model unavailable ('+S.nreason+'), so the draft was not rewritten. Edit it by hand.'); }
   S.nbusy=false; if(S.route==='negotiate') softRender();
 }
 
@@ -1300,7 +1349,9 @@ function autopsyView(){
    ${R?`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${R.conf==='INSUFFICIENT EVIDENCE'?'acc':'med'}">Confidence: ${esc(R.conf)}</span></div>
      <p style="font-size:17px;max-width:68ch;text-wrap:pretty">${esc(R.answer)}</p>
-     <div class="grid g2"><div><div class="lab">Observed</div><ul style="margin:0;padding-left:18px">${R.observed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab">${R.hyp.length?'Hypothesis, not a finding':'Not established'}</div><ul style="margin:0;padding-left:18px">${(R.hyp.length?R.hyp:['Distribution cause versus content cause. The available data does not separate them.']).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
+     <div class="grid g3"><div><div class="lab">Evidence</div><ul style="margin:0;padding-left:18px">${R.observed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+       <div><div class="lab">Inference${R.hyp.length?' (not proven)':''}</div><ul style="margin:0;padding-left:18px">${(R.hyp.length?R.hyp:['None. The data cannot separate a distribution cause from a content cause.']).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+       <div><div class="lab">Unknown</div><ul style="margin:0;padding-left:18px">${['Algorithm or distribution changes (CreVa cannot see them)','Whether your audience was online when you posted'].concat(R.kind==='ins'?['Data that would help: retention beyond the first 3 seconds, and reach split by followers and non-followers']:[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
      <div class="status">${R.mode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' answer, checked against the data rules.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div></div></div>`:''}`;
 }
 function autopsyRule(p){
@@ -1394,7 +1445,7 @@ async function ensureContract(){
       if(Array.isArray(r.missing)&&r.missing.length) missing=r.missing.slice(0,6);
     } else throw new ApiFail('offline');
     S.C={risks,missing}; S.cMode='live';
-  }catch(err){ S.C={risks:A.risks,missing:missingTerms(A.con)}; S.cMode='fallback'; S.reason=reasonOf(err); }
+  }catch(err){ S.C={risks:A.risks,missing:missingTerms(A.con)}; S.cMode='fallback'; S.reason=reasonOf(err); logFallback('contract',err); }
   S.cbusy=false; if(S.route==='contracts') render(false);
 }
 
@@ -1408,7 +1459,7 @@ function quickAnalysis(id){ loadOffer(id); S.A=analyze(S.msg,S.con); S.mode=''; 
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
   if(a==='go'){ e.preventDefault(); const r=b.dataset.r; if(r==='rate'&&!S.msg&&S.cur!=='blank'&&!S.A) loadOffer('glow'); if(r==='contracts'){ S.cid=null; } if(r==='negotiate'&&S.mode==='rule'&&!S.A){ loadOffer('glow'); S.A=analyze(S.msg,S.con); } go(r); }
-  else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
+  else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else if(r==='rategrowth'){ S.tab='rate'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
   else if(a==='menu'){ $('#side').classList.toggle('open'); $('#scrim').classList.toggle('open'); }
   else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); }
   else if(a==='sc-toggle'){ const s=S.profile.social[+b.dataset.i]; if(!s.active){ openLink(+b.dataset.i); } else { s.active=false; s.conn=false; S.dirty=true; render(false); } }
@@ -1504,7 +1555,7 @@ async function runAutopsy(){
       const a=d.result; // the server already rejected blame language and a wrong confidence level
       out={mode:'live',conf:a.confidence,answer:a.answer,observed:a.observed,hyp:a.hypotheses,kind:a.kind};
     } else throw new ApiFail('offline');
-  }catch(err){ S.reason=reasonOf(err); }
+  }catch(err){ S.reason=reasonOf(err); logFallback('autopsy',err); }
   S.auto[p.id]=out; S.abusy=false; if(S.route==='growth') render(false);
 }
 
@@ -1524,7 +1575,7 @@ async function runCheck(){
       narrow=d.result.narrow;
     } else throw new ApiFail('offline');
     if(Array.isArray(narrow)&&narrow.length>=2&&narrow.every(x=>typeof x==='string'&&x.length>10&&x.length<220)){ o.narrowAI=narrow.slice(0,5); S.chkMode='live'; } else throw new ApiFail('upstream_error');
-  }catch(err){ S.chkMode='fallback'; S.reason=reasonOf(err); }
+  }catch(err){ S.chkMode='fallback'; S.reason=reasonOf(err); logFallback('checker',err); }
   S.chkBusy=false; if(S.route==='checker') render(false);
 }
 
@@ -1848,6 +1899,11 @@ function histHtml(){
   return `<div class="sec"><h2>Recent analyses</h2><div class="card">${S.hist.slice(0,5).map(h=>`<div class="rrow" style="cursor:default"><span class="sev acc">Live</span><div class="t"><b>${esc(h.brand||'Offer')}${h.fairLow!=null&&h.fairHigh!=null?' · '+INR(h.fairLow)+' to '+INR(h.fairHigh):''}</b><span>${esc(h.headline||'')}</span></div><span class="muted small">${esc(timeAgo(h.createdAt))}</span></div>`).join('')}</div></div>`;
 }
 
+// Tell the server that a fallback happened, so the "fallback rate" metric can be computed. Never blocks the UI.
+function logFallback(task,err){
+  if(!useApi()||(err&&err.code==='stopped')) return; // a user pressing Stop is not a failure
+  try{ fetch('/api/data?kind=event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'fallback',task,reason:(err&&err.code)||'error',brand:brandOf()})}).catch(()=>{}); }catch(e){}
+}
 const ctimers={};
 function saveContract(c){
   if(S.db!=='online') return;
@@ -1871,7 +1927,7 @@ async function bootstrapData(){
       const extra=mapped.filter(x=>!order.includes(x.id)).sort((x,y)=>y._t-x._t);
       S.contracts=[...known,...extra].map(({_t,...rest})=>rest);
     }
-    if(d.network&&d.network.count) S.net.count=d.network.count, S.net.median=d.network.median;
+    if(d.network&&d.network.count){ S.net.count=d.network.count; S.net.median=d.network.median; S.net.synthetic=d.network.synthetic!==false; }
     const paid=(d.deals||[]).filter(x=>x.status==='Paid'&&x.closed_amount).map(x=>x.closed_amount);
     if(paid.length) S.net.closed=paid.sort((a,b)=>a-b).slice(0,5);
     S.hist=(d.analyses||[]).filter(a=>a.source==='live'&&a.task==='deal'&&a.headline);

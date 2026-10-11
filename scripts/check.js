@@ -46,7 +46,7 @@ const g = spawnSync(process.execPath, [path.join(root, 'scripts', 'gen-engine.js
 ok('lib/engine.js and lib/system.js match counter.html', g.status === 0, (g.stdout || '').trim().replace(/\r?\n/g, '; '));
 const t = spawnSync(process.execPath, [path.join(root, 'scripts', 'test-ai-offline.js')], { encoding: 'utf8' });
 ok('/api/ai offline guardrail tests', t.status === 0, t.status === 0 ? '' : (t.stdout || t.stderr || '').trim().slice(-500));
-for (const [label, file] of [['GlowSkin numbers are consistent on every screen', 'audit-consistency.js'], ['failure paths show an honest label and the app still works', 'failure-tests.js'], ['no secrets in the working tree or git history', 'scan-secrets.js']]) {
+for (const [label, file] of [['spec guardrails: escalation, confidence caps, lockout, correlation, uncited figures', 'test-engine.js'], ['screens show what the spec promises', 'test-ui-spec.js'], ['GlowSkin numbers are consistent on every screen', 'audit-consistency.js'], ['failure paths show an honest label and the app still works', 'failure-tests.js'], ['no secrets in the working tree or git history', 'scan-secrets.js']]) {
   const x = spawnSync(process.execPath, [path.join(root, 'scripts', file)], { encoding: 'utf8', timeout: 180000 });
   const lastLine = (x.stdout || '').trim().split('\n').filter(Boolean).pop() || '';
   ok(label, x.status === 0, x.status === 0 ? lastLine : (x.stdout || x.stderr || '').trim().slice(-500));
