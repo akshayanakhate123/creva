@@ -22,7 +22,7 @@ import {
 } from '../lib/validate.js';
 
 const DEFAULT_MODEL = 'openai/gpt-oss-20b'; // a production model per Groq's models page; override with GROQ_MODEL
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) > 0 ? Number(process.env.AI_TIMEOUT_MS) : 20_000; // env override exists for tests only
 const IP_PER_MIN = 10;
 const DAILY_LIMIT = 800; // stays under the documented 1K requests/day. Verify your own limits in the Groq console.
 const DISCLOSURE = 'All posts will carry the paid partnership label.';

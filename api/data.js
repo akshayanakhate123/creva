@@ -51,6 +51,37 @@ async function readJson(request) {
   try { return { value: JSON.parse(text) }; } catch { return { error: 'bad_request' }; }
 }
 
+const DB_TIMEOUT_MS = 4000; // a paused or unreachable project must not leave the page waiting
+
+async function handle(request, kind, sb) {
+  if (request.method === 'GET' && kind === 'bootstrap') return json(await bootstrap(sb));
+
+  if (request.method === 'POST' && ['profile', 'contract', 'eval'].includes(kind)) {
+    const body = await readJson(request);
+    if (body.error) return fail(body.error);
+
+    if (kind === 'profile') {
+      const v = validateProfile(body.value);
+      if (v.error) return fail(v.error);
+      must(await sb.from('profiles').upsert(v.value, { onConflict: 'id' }));
+      return json({ ok: true });
+    }
+    if (kind === 'contract') {
+      const v = validateContract(body.value);
+      if (v.error) return fail(v.error);
+      const existing = must(await sb.from('contracts').select('id').eq('user_id', DEMO_USER));
+      if (existing.length >= MAX_CONTRACTS && !existing.some((r) => r.id === v.value.id)) return fail('bad_request');
+      must(await sb.from('contracts').upsert(v.value, { onConflict: 'id' }));
+      return json({ ok: true });
+    }
+    const v = validateEval(body.value);
+    if (v.error) return fail(v.error);
+    must(await sb.from('eval_runs').insert(v.value));
+    return json({ ok: true });
+  }
+  return fail('bad_request');
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -62,36 +93,17 @@ export default {
     if (!supabaseConfigured()) return fail('db_not_configured');
     const sb = getSupabase();
 
+    let timer;
     try {
-      if (request.method === 'GET' && kind === 'bootstrap') return json(await bootstrap(sb));
-
-      if (request.method === 'POST' && ['profile', 'contract', 'eval'].includes(kind)) {
-        const body = await readJson(request);
-        if (body.error) return fail(body.error);
-
-        if (kind === 'profile') {
-          const v = validateProfile(body.value);
-          if (v.error) return fail(v.error);
-          must(await sb.from('profiles').upsert(v.value, { onConflict: 'id' }));
-          return json({ ok: true });
-        }
-        if (kind === 'contract') {
-          const v = validateContract(body.value);
-          if (v.error) return fail(v.error);
-          const existing = must(await sb.from('contracts').select('id').eq('user_id', DEMO_USER));
-          if (existing.length >= MAX_CONTRACTS && !existing.some((r) => r.id === v.value.id)) return fail('bad_request');
-          must(await sb.from('contracts').upsert(v.value, { onConflict: 'id' }));
-          return json({ ok: true });
-        }
-        const v = validateEval(body.value);
-        if (v.error) return fail(v.error);
-        must(await sb.from('eval_runs').insert(v.value));
-        return json({ ok: true });
-      }
-      return fail('bad_request');
+      return await Promise.race([
+        handle(request, kind, sb),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new DbError()), DB_TIMEOUT_MS); }),
+      ]);
     } catch {
-      // Covers a paused project, a network failure, or any database error. Never echo details.
+      // Covers a paused project, a network failure, a timeout, or any database error. Never echo details.
       return fail('db_unavailable');
+    } finally {
+      clearTimeout(timer);
     }
   },
 };

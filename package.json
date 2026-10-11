@@ -12,7 +12,11 @@
     "test": "node scripts/check.js",
     "seed:gen": "node scripts/gen-seed.js",
     "smoke:ai": "node scripts/smoke-ai.js",
-    "smoke:data": "node scripts/smoke-data.js"
+    "smoke:data": "node scripts/smoke-data.js",
+    "evals": "node scripts/evals.js",
+    "audit": "node scripts/audit-consistency.js",
+    "failure-tests": "node scripts/failure-tests.js",
+    "scan": "node scripts/scan-secrets.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3"
