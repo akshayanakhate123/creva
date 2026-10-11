@@ -39,6 +39,24 @@ scripts/            build, checks, smoke tests
 
 Vercel runs `node scripts/build.js` and serves `public/` plus `api/` (see `vercel.json`).
 
+1. Push this repo to GitHub.
+2. In Vercel: Add New, Project, import the repo. Framework preset: Other. Leave the build settings as they are (they come from `vercel.json`: build command `node scripts/build.js`, output directory `public`).
+3. Before the first deploy, add these Environment Variables (Settings, Environment Variables), for Production and Preview:
+
+   | Name | Type |
+   |---|---|
+   | `GROQ_API_KEY` | Secret |
+   | `GROQ_MODEL` | Config (value `openai/gpt-oss-20b`) |
+   | `SUPABASE_URL` | Secret |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Secret |
+
+   Changes to variables only apply to **new** deployments, so redeploy after changing one.
+4. Deploy, then run `npm run smoke:live -- https://YOUR-SITE.vercel.app`.
+
+A daily Vercel cron job (`/api/keepalive`, 03:17 UTC, see `vercel.json`) reads one row so the free Supabase project does not pause. On the free Hobby plan cron jobs can run only once a day and may fire up to an hour late.
+
+See `DEMO-DAY.md` for the demo checklist and `ROLLBACK.md` for rolling back.
+
 ## Backend
 
 - `GET /api/health` liveness check.

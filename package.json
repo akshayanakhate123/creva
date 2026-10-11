@@ -16,7 +16,8 @@
     "evals": "node scripts/evals.js",
     "audit": "node scripts/audit-consistency.js",
     "failure-tests": "node scripts/failure-tests.js",
-    "scan": "node scripts/scan-secrets.js"
+    "scan": "node scripts/scan-secrets.js",
+    "smoke:live": "node scripts/smoke-live.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3"
