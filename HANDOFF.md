@@ -44,7 +44,7 @@ Live tools (use quota): `npm run evals` (10 prompts, live + fallback, writes `ev
 ### Deployment
 Repo: https://github.com/akshayanakhate123/creva (8 commits on `main`, pushed; history scanned, no secrets). Vercel config is in `vercel.json` (build `node scripts/build.js`, output `public`, daily cron `/api/keepalive`). Env var names and steps: `README.md`. Demo checklist: `DEMO-DAY.md`. Rollback: `ROLLBACK.md`.
 
-**Vercel status (as of 2026-10-11):** the user imported the repo and pressed Deploy **before adding the environment variables**, so the first deployment is live but runs in fallback mode (engine only, "Demo data (database offline)" on Profile). That is expected and also proves the fallback works in production. Still to do, by the user in the Vercel dashboard: Settings, Environment Variables, add `GROQ_API_KEY` (Secret), `GROQ_MODEL` = `openai/gpt-oss-20b` (Config), `SUPABASE_URL` (Secret), `SUPABASE_SERVICE_ROLE_KEY` (Secret) for Production and Preview, copying the values from the local `.env.local` (never via chat); then Deployments, the three dots, Redeploy (variables only apply to new deployments). The production URL has not been shared yet (the user's screenshot showed a truncated per-deployment address).
+**Vercel status (2026-10-12):** LIVE at https://creva-self.vercel.app/ (the link in the submission PDF) with all four environment variables set. `npm run smoke:live -- https://creva-self.vercel.app` passes 8/8 (live Groq model, database online). No sideways scrolling at 390px in dark or light on all 11 screens. Pushing to `main` redeploys production automatically.
 
 ## 3. Files being actively edited
 `counter.html` (front end), `api/ai.js`, `lib/validate.js` (most behaviour changes), `scripts/*.js`. After editing anything in `lib/`, restart `npm run dev` (Node caches imports).
@@ -55,6 +55,7 @@ Repo: https://github.com/akshayanakhate123/creva (8 commits on `main`, pushed; h
 - The engine tags payment-terms lines `group: "finance"`; the schema must allow it.
 - **Model drift:** gpt-oss-20b sometimes writes "unlimited revisions", causal language in autopsies, or headlines that bury the licence. Server-side guards reject or replace these (draft faithfulness check, `BLAME` regex, `headlineKeepsPriority`). Expect an occasional fallback label.
 - An unreachable Supabase took 7 s to fail; calls are now capped at 4 s.
+- **Groq schemas: no item limits at all.** Even maxItems on arrays keyed to the engine risk keys caused 400 json_validate_failed when the model listed one extra item (6 issues for a 4-issue contract), which made contract review fall back at random. Schemas now have no maxItems, maxLength or key enum; the server keeps only the engine keys and slices lists. Set `AI_DEBUG=1` locally to see Groq error codes in the server log.
 - Jsdom harness: wait for `S.db` to leave `'unknown'` before closing the window, or a late `softRender` throws.
 - `vercel dev` asks to link a project; the repo uses its own tiny dev server instead.
 - **Deploying before setting environment variables:** the first Vercel deploy was done from the import screen without them. Nothing breaks (fallback mode), but a redeploy is needed after adding them. Add variables first next time.
@@ -64,12 +65,12 @@ Repo: https://github.com/akshayanakhate123/creva (8 commits on `main`, pushed; h
 - Browser-pane screenshots time out or catch the page mid-animation; retry. The pane is narrow by default.
 - Earlier front-end lessons: hard-coded colours break the themes (use tokens); `.btn` overrides `.burger` display; inline `flex:` styles on inputs break the dictation wrapper.
 
-## 5. Next step
-1. **Finish the deploy.** Once the user has added the four environment variables, redeployed, and sent the production URL: run `npm run smoke:live -- <url>` (8 checks, one Groq call), open the site in the browser pane at 390px width in dark and light, confirm Deal Intelligence says "Live model (Groq, openai/gpt-oss-20b)" and Profile shows no "database offline" note. If Profile still says offline, a Supabase variable is probably wrong (check `/api/keepalive` on the site: `db_not_configured` means the variables are missing, `db_unavailable` means a wrong value or a paused project). Then fix anything the 390px check finds.
+## 5. Next steps
+The assignment document is `CreVa_Product_Spec.pdf` (6 pages, in the user's Downloads). It was compared with the code on 2026-10-12. The code gaps that mattered are fixed (see `SPEC-FIXES.md`): escalation on liability, indemnity and IP (tax goes to a CA), confidence capped below 5 deals, a verifier that drops uncited rupee figures, lockout pricing, correlation-not-cause, Evidence / Inference / Unknown labels, fallback logging with `npm run metrics`, a rupee value on each contract issue, and a demo-data label on Tier 2. `npm run evals` now runs the spec's 10 cases plus 3 extra: 13/13 live and 13/13 on the fallback engine.
 
-Then, in order:
-2. Wire the Opportunities, Deals and Payments screens to the rows `bootstrap` already returns (they still show built-in copies that match the seed).
-3. Visual QA at 390px in light and dark (Opportunities, Breakdown, Negotiate, Deals, Growth, Checker, Contracts, Profile).
+1. **The user must fix the PDF** using `SPEC-FIXES.md` (it cannot be edited from here). Most important: the sizing line (50K x 799 x 12 is about 47.9 crore, not 479 crore), the leftover "confirm before submitting" sentence, the wireframe severities and numbers that disagree with the app, and the "Extract" step (it is a rule-based parser, not an LLM).
+2. Still not built, but the spec mentions them: recording a deal as accepted or signed (the north-star metric), a Rate Card screen, proof pack and export, invoice creation, scheduled reminders, a cash-ask draft for barter offers, consent for collecting offers, plan limits, and the walk-away answer using the saved minimum fee. Either build them or make the document say they are next.
+3. Wire the Opportunities, Deals and Payments screens to the rows `bootstrap` already returns (they show built-in copies that match the seed).
 4. Optional: real social linking needs a backend plus OAuth apps approved by Meta, LinkedIn, Google and X. The current pop-up is a labelled demo.
 5. Rotate the Groq key and reset the Supabase database password (both were pasted into a chat).
 
