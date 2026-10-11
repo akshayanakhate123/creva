@@ -1,6 +1,6 @@
 # CreVa: handoff
 
-Last updated 2026-10-11. For whoever (or whichever session) picks this up next.
+Last updated 2026-10-11 (after the first Vercel deploy). For whoever (or whichever session) picks this up next.
 
 ## 1. Goal
 
@@ -42,8 +42,9 @@ Syntax and build, engine in sync, untrusted-text lint (model/contract text must 
 Live tools (use quota): `npm run evals` (10 prompts, live + fallback, writes `eval_runs`; last result 10/10 and 10/10), `npm run smoke:ai`, `npm run smoke:data`, `npm run smoke:live -- <url>`.
 
 ### Deployment
-Repo: https://github.com/akshayanakhate123/creva . Vercel config is in `vercel.json` (build `node scripts/build.js`, output `public`, daily cron `/api/keepalive`). Env var names and steps: `README.md`. Demo checklist: `DEMO-DAY.md`. Rollback: `ROLLBACK.md`.
-**Check whether the Vercel project exists and the four environment variables are set; the deploy needs the user's Vercel login.**
+Repo: https://github.com/akshayanakhate123/creva (8 commits on `main`, pushed; history scanned, no secrets). Vercel config is in `vercel.json` (build `node scripts/build.js`, output `public`, daily cron `/api/keepalive`). Env var names and steps: `README.md`. Demo checklist: `DEMO-DAY.md`. Rollback: `ROLLBACK.md`.
+
+**Vercel status (as of 2026-10-11):** the user imported the repo and pressed Deploy **before adding the environment variables**, so the first deployment is live but runs in fallback mode (engine only, "Demo data (database offline)" on Profile). That is expected and also proves the fallback works in production. Still to do, by the user in the Vercel dashboard: Settings, Environment Variables, add `GROQ_API_KEY` (Secret), `GROQ_MODEL` = `openai/gpt-oss-20b` (Config), `SUPABASE_URL` (Secret), `SUPABASE_SERVICE_ROLE_KEY` (Secret) for Production and Preview, copying the values from the local `.env.local` (never via chat); then Deployments, the three dots, Redeploy (variables only apply to new deployments). The production URL has not been shared yet (the user's screenshot showed a truncated per-deployment address).
 
 ## 3. Files being actively edited
 `counter.html` (front end), `api/ai.js`, `lib/validate.js` (most behaviour changes), `scripts/*.js`. After editing anything in `lib/`, restart `npm run dev` (Node caches imports).
@@ -56,12 +57,17 @@ Repo: https://github.com/akshayanakhate123/creva . Vercel config is in `vercel.j
 - An unreachable Supabase took 7 s to fail; calls are now capped at 4 s.
 - Jsdom harness: wait for `S.db` to leave `'unknown'` before closing the window, or a late `softRender` throws.
 - `vercel dev` asks to link a project; the repo uses its own tiny dev server instead.
+- **Deploying before setting environment variables:** the first Vercel deploy was done from the import screen without them. Nothing breaks (fallback mode), but a redeploy is needed after adding them. Add variables first next time.
+- Pasting secrets into chat: the Groq key and Supabase database password were pasted into a chat during setup. Treated as exposed; rotate them (the user chose to defer).
+- The git author on all commits is the user's real name and email (from their git config); the repo may be public.
 - Hobby cron: once per day only, may run up to an hour late. Scheduled GitHub Actions are disabled after 60 days of repo inactivity in public repos, which is why Vercel cron was used for keep-alive.
 - Browser-pane screenshots time out or catch the page mid-animation; retry. The pane is narrow by default.
 - Earlier front-end lessons: hard-coded colours break the themes (use tokens); `.btn` overrides `.burger` display; inline `flex:` styles on inputs break the dictation wrapper.
 
-## 5. Next steps
-1. Finish the deploy: import the repo in Vercel, add the four environment variables, deploy, run `npm run smoke:live -- <url>`, check the page at 390px.
+## 5. Next step
+1. **Finish the deploy.** Once the user has added the four environment variables, redeployed, and sent the production URL: run `npm run smoke:live -- <url>` (8 checks, one Groq call), open the site in the browser pane at 390px width in dark and light, confirm Deal Intelligence says "Live model (Groq, openai/gpt-oss-20b)" and Profile shows no "database offline" note. If Profile still says offline, a Supabase variable is probably wrong (check `/api/keepalive` on the site: `db_not_configured` means the variables are missing, `db_unavailable` means a wrong value or a paused project). Then fix anything the 390px check finds.
+
+Then, in order:
 2. Wire the Opportunities, Deals and Payments screens to the rows `bootstrap` already returns (they still show built-in copies that match the seed).
 3. Visual QA at 390px in light and dark (Opportunities, Breakdown, Negotiate, Deals, Growth, Checker, Contracts, Profile).
 4. Optional: real social linking needs a backend plus OAuth apps approved by Meta, LinkedIn, Google and X. The current pop-up is a labelled demo.
