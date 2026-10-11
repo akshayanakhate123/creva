@@ -12,3 +12,6 @@ const html = fs.readFileSync(src, 'utf8');
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'index.html'), wrap(html));
 console.log('Built public/index.html (' + Math.round(wrap(html).length / 1024) + ' KB) from counter.html');
+
+// Keep the server-side copy of the engine and system prompt in step with counter.html.
+await import('./gen-engine.js');

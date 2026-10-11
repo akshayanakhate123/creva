@@ -23,4 +23,8 @@ const out = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 ok('public/index.html has doctype', out.toLowerCase().startsWith('<!doctype html>'));
 ok('title is in <head>', /<head>[\s\S]*<title>CreVa<\/title>[\s\S]*<\/head>/.test(out));
 ok('no secret-looking strings in the page', !/gsk_[A-Za-z0-9]{10,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/.test(out));
+const g = spawnSync(process.execPath, [path.join(root, 'scripts', 'gen-engine.js'), '--check'], { encoding: 'utf8' });
+ok('lib/engine.js and lib/system.js match counter.html', g.status === 0, (g.stdout || '').trim().replace(/\r?\n/g, '; '));
+const t = spawnSync(process.execPath, [path.join(root, 'scripts', 'test-ai-offline.js')], { encoding: 'utf8' });
+ok('/api/ai offline guardrail tests', t.status === 0, t.status === 0 ? '' : (t.stdout || t.stderr || '').trim().slice(-500));
 process.exit(failed ? 1 : 0);
