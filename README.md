@@ -38,3 +38,21 @@ scripts/            build, checks, smoke tests
 ## Deploy
 
 Vercel runs `node scripts/build.js` and serves `public/` plus `api/` (see `vercel.json`).
+
+## Backend
+
+- `GET /api/health` liveness check.
+- `POST /api/ai` the live model (Groq). Tasks: deal, contract, negotiate, autopsy, checker. The engine owns every number; the model only writes explanations. Guardrails (refuse to send/accept) run before any model call. Errors: `bad_request`, `too_large`, `rate_limited`, `upstream_error`, `no_key`, `timeout`.
+- `GET /api/data?kind=bootstrap` and `POST /api/data?kind=profile|contract|eval` store the demo user's data in Supabase through the service role key (server only).
+
+The app always works without them: any failure falls back to the built-in engine and seeded in-memory data, with an honest label.
+
+Tests: `npm test` (offline, no keys). Live checks: `npm run smoke:ai` (one Groq call) and `npm run smoke:data`.
+
+### If the database shows "Demo data (database offline)"
+
+Supabase pauses free projects after a period of inactivity. Open the project in the Supabase dashboard and restore it, wait a minute, then reload the app. The app keeps working on seeded data meanwhile.
+
+### Public demo note
+
+There is no login: everyone who opens the site edits the same demo profile ("demo-ananya"). Writes are validated, size-capped, rate-limited and same-origin only.

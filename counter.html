@@ -752,7 +752,7 @@ let samplePromise=null;
 function getSample(){ if(!samplePromise) samplePromise=(async()=>{ try{ return window.claude&&window.claude.use?await window.claude.use('sample'):null; }catch(e){ return null; } })(); return samplePromise; }
 async function ai(task, payload, schema, signalMs){
   const sample=await getSample(); if(!sample) throw new Error('unavailable');
-  const prompt=SYSTEM+'\n\n---\nTASK: '+task+'\n\nINPUT:\n'+payload+'\n\nReturn ONLY one JSON object, no markdown fences, matching this shape: '+schema;
+  const prompt=SYSTEM.replace(/Ananya/g,firstName())+'\n\n---\nTASK: '+task+'\n\nINPUT:\n'+payload+'\n\nReturn ONLY one JSON object, no markdown fences, matching this shape: '+schema;
   let to; const timeout=new Promise((_,rej)=>{ to=setTimeout(()=>rej(new Error('timeout')),signalMs||40000); });
   try{
     let res=await Promise.race([sample.json(prompt,{cache:false}),timeout]);
@@ -761,8 +761,37 @@ async function ai(task, payload, schema, signalMs){
     return res;
   } finally { clearTimeout(to); }
 }
-function reasonOf(e){ const m=String(e&&e.message||e&&e.code||''); if(/unavailable|not_granted/.test(m)||(e&&e.code==='not_granted')) return 'live model not available in this view'; if(/timeout/.test(m)) return 'live model timed out'; if(/shape/.test(m)) return 'live model returned an unusable answer'; return 'live model call failed'; }
-
+/* ---- runtime: /api (deployed or local) vs the Claude artifact "sample" capability ---- */
+const inArtifact=()=>!!(window.claude&&window.claude.use);
+const useApi=()=>!inArtifact()&&/^https?:/.test(location.protocol);
+class ApiFail extends Error{ constructor(code,retry){ super(code); this.code=code; this.retry=retry||null; } }
+const REASONS={rate_limited:'rate limit reached, try again in a minute',no_key:'live model is not configured',timeout:'live model took too long',offline:'no connection to the server',stopped:'stopped by you',upstream_error:'live model gave an unusable answer',bad_request:'the request was not accepted',too_large:'the text is too long',db_unavailable:'database offline'};
+function reasonOf(e){ if(e&&REASONS[e.code]) return REASONS[e.code]; const m=String(e&&e.message||e&&e.code||''); if(/unavailable|not_granted/.test(m)||(e&&e.code==='not_granted')) return 'live model not available in this view'; if(/timeout/.test(m)) return 'live model timed out'; if(/shape/.test(m)) return 'live model returned an unusable answer'; return 'live model call failed'; }
+S.mdl={provider:'Groq',model:''};
+S.net={count:12,median:54000,closed:[42000,51000,57000]}; // overwritten by the database when it answers
+S.hist=[]; S.db='unknown'; // db: unknown | online | offline
+const liveTag=()=>'Live model ('+S.mdl.provider+(S.mdl.model?', '+S.mdl.model:'')+')';
+// POST /api/ai. Throws ApiFail with a code the UI turns into a human reason. `signal` lets the Stop button abort.
+async function apiAi(task,fields,signal){
+  const ctrl=new AbortController(); let timedOut=false;
+  const t=setTimeout(()=>{ timedOut=true; ctrl.abort(); },26000);
+  const onAbort=()=>ctrl.abort(); if(signal) signal.addEventListener('abort',onAbort);
+  let res;
+  try{ res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({task},fields)),signal:ctrl.signal}); }
+  catch(e){ throw new ApiFail(signal&&signal.aborted?'stopped':(timedOut?'timeout':'offline')); }
+  finally{ clearTimeout(t); if(signal) signal.removeEventListener('abort',onAbort); }
+  let data=null; try{ data=await res.json(); }catch(e){}
+  if(!data||!data.ok) throw new ApiFail((data&&data.code)||'upstream_error',data&&data.retry_after);
+  if(data.source==='live') S.mdl={provider:'Groq',model:data.model||''};
+  return data;
+}
+// What the model is told about the creator. Names and numbers come from the saved profile, never hard-coded.
+function aiContext(extra){
+  const p=S.profile, ig=p.social.find(s=>s.id==='ig'), li=p.social.find(s=>s.id==='li');
+  const n=s=>(s&&s.active&&typeof s.followers==='number'&&s.followers>=0)?s.followers:null;
+  const opp={glow:'opp-glowskin',fin:'opp-fintechco',well:'opp-wellnessco'}[S.cur]||null;
+  return Object.assign({profileName:p.name,city:p.city,niche:p.niche,instagramFollowers:n(ig),linkedinFollowers:n(li),closedDeals:S.net.closed,networkCount:S.net.count,networkMedian:S.net.median,site:S.site||'',opportunityId:opp},extra||{});
+}
 function mergeAI(E, a){
   const A=JSON.parse(JSON.stringify(E));
   if(typeof a.headline==='string' && a.headline.length>10 && a.headline.length<260) A.headline=a.headline;
@@ -782,20 +811,50 @@ function mergeAI(E, a){
   return A;
 }
 
+// Engine numbers stay authoritative. The model only supplies wording: headline, consequences, unknowns.
+function mergeApi(E,r){
+  const A=JSON.parse(JSON.stringify(E));
+  if(typeof r.headline==='string'&&r.headline.length>10&&r.headline.length<260) A.headline=r.headline;
+  (r.risks||[]).forEach(x=>{ const k=A.risks.find(y=>y.key===x.key); if(!k) return; if(typeof x.consequence==='string'&&x.consequence.length>15&&x.consequence.length<340) k.consequence=x.consequence; if(typeof x.line==='string'&&x.line.length>8&&x.line.length<160) k.line=x.line; });
+  if(Array.isArray(r.unknowns)&&r.unknowns.length) A.unknown=r.unknowns.slice(0,7);
+  if(rk[r.confidence]&&rk[r.confidence]<rk[A.confidence]) A.confidence=r.confidence;
+  A.numbersNote=r.numbers_note||'';
+  return A;
+}
+
+async function liveDeal(E,signal){
+  if(inArtifact()){
+    const a=await ai('Analyze this brand offer for the creator. The message and contract are below. The reference calculation is from CreVa\'s own pricing model (base Reel ₹38,000, Story +₹3,000, paid media +₹10,000, 90+ day usage +₹6,000, exclusivity +₹2,000 per month, revisions beyond one +₹1,500 each, net-60 -₹1,000, net-90 or worse -₹2,000; perpetual usage and raw footage are listed as unpriced licence-level asks). Keep the reference numbers unless the text clearly contradicts the parsed terms. Do not invent market benchmarks. '+(E.P.isOther?'This message describes a different creator than '+S.profile.name+'; use only what they stated and set confidence to Low with Tier 3.':'')+' Plain language. Each risk consequence must be one sentence of commercial consequence, never a legal conclusion.',
+      brandCtx()+'MESSAGE:\n'+S.msg+'\n\nCONTRACT:\n'+(S.con||'(none)')+'\n\nREFERENCE CALCULATION:\n'+JSON.stringify({ask:E.ask,indicative:E.indicative,low:E.low,high:E.high,confidence:E.confidence,evidence:E.evidence,lines:E.lines,unpriced:E.unpriced,risks:E.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,line:r.line})),unknown:E.unknown}),
+      '{"headline":string,"indicative":number,"low":number,"high":number,"confidence":"High|Medium|Low","lines":[{"label":string,"amount":number,"group":"content|rights|finance"}],"risks":[{"key":string,"sev":"HIGH|MEDIUM|LOW","line":string,"consequence":string}],"unknown":[string]}');
+    S.mdl={provider:'Claude',model:''};
+    return mergeAI(E,a);
+  }
+  if(!useApi()) throw new ApiFail('offline');
+  const d=await apiAi('deal',{brand:brandOf(),message:S.msg,contract:S.con,context:aiContext()},signal);
+  if(d.source!=='live') throw new ApiFail('upstream_error');
+  return mergeApi(E,d.result);
+}
+
+function pushHistory(A){
+  S.hist.unshift({createdAt:new Date().toISOString(),source:'live',model:S.mdl.model,brand:brandOf(),headline:A.headline,fairLow:A.low==null?null:A.low,fairHigh:A.high==null?null:A.high});
+  S.hist=S.hist.slice(0,20);
+}
+
 async function runAnalysis(){
+  if(S.busy) return; // free quota is limited: no double submits
   const site=cleanSite(S.site); if(site===null){ const e=$('#err_site'); if(e) e.textContent='Enter a valid website, like brand.com.'; toast('Check the brand website.'); return; } S.site=site;
   S.special=null; S.A=null; S.C=null; S.refused=false;
+  // Guardrails run first, in the browser, before any network call.
   const sp=special(S.msg);
   if(sp){ S.special=sp; S.mode='rule'; render(); return; }
   if(S.con&&S.con.trim()) upsertContract();
-  const E=analyze(S.msg,S.con); E.pending=true; S.A=E; S.busy=true; render();
+  const E=analyze(S.msg,S.con); E.pending=true; S.A=E; S.busy=true; S.ctrl=new AbortController(); render();
   try{
-    const a=await ai('Analyze this brand offer for the creator. The message and contract are below. The reference calculation is from CreVa\'s own pricing model (base Reel ₹38,000, Story +₹3,000, paid media +₹10,000, 90+ day usage +₹6,000, exclusivity +₹2,000 per month, revisions beyond one +₹1,500 each, net-60 -₹1,000, net-90 or worse -₹2,000; perpetual usage and raw footage are listed as unpriced licence-level asks). Keep the reference numbers unless the text clearly contradicts the parsed terms. Do not invent market benchmarks. '+(E.P.isOther?'This message describes a different creator than Ananya; use only what they stated and set confidence to Low with Tier 3.':'')+' Plain language. Each risk consequence must be one sentence of commercial consequence, never a legal conclusion.',
-      brandCtx()+'MESSAGE:\n'+S.msg+'\n\nCONTRACT:\n'+(S.con||'(none)')+'\n\nREFERENCE CALCULATION:\n'+JSON.stringify({ask:E.ask,indicative:E.indicative,low:E.low,high:E.high,confidence:E.confidence,evidence:E.evidence,lines:E.lines,unpriced:E.unpriced,risks:E.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,line:r.line})),unknown:E.unknown}),
-      '{"headline":string,"indicative":number,"low":number,"high":number,"confidence":"High|Medium|Low","lines":[{"label":string,"amount":number,"group":"content|rights|finance"}],"risks":[{"key":string,"sev":"HIGH|MEDIUM|LOW","line":string,"consequence":string}],"unknown":[string]}');
-    S.A=mergeAI(E,a); S.mode='live'; S.reason='';
+    S.A=await liveDeal(E,S.ctrl.signal); S.mode='live'; S.reason='';
+    pushHistory(S.A);
   }catch(err){ S.mode='fallback'; S.reason=reasonOf(err); }
-  S.busy=false; if(S.A) S.A.pending=false;
+  S.busy=false; S.ctrl=null; if(S.A) S.A.pending=false;
   if(S.route==='rate'||S.route==='breakdown'||S.route==='negotiate') render();
 }
 
@@ -803,7 +862,7 @@ async function runAnalysis(){
 const $ = s=>document.querySelector(s);
 function sevPill(s){ const c={HIGH:'high',MEDIUM:'med',LOW:'low'}[s]||'low'; return `<span class="sev ${c}">${s}</span>`; }
 function modeLabel(){
-  if(S.mode==='live') return `<span class="dot ok"></span>Live model analysis. Numbers are checked against CreVa's pricing rules.`;
+  if(S.mode==='live') return `<span class="dot ok"></span>${esc(liveTag())}. Numbers checked by CreVa engine.`;
   if(S.mode==='fallback') return `<span class="dot amber"></span>Fallback engine, not the live model (${esc(S.reason)}). Same rules, keyword-based reading.`;
   if(S.mode==='rule') return `<span class="dot"></span>Built-in rule, no model call.`;
   return '';
@@ -952,7 +1011,7 @@ V.rate=()=>{
         <div class="fgrid" style="margin-top:14px"><div><label class="f" for="bn">Brand name</label><input type="text" id="bn" data-bind="brandName" value="${esc(S.brandName)}" placeholder="For example, GlowSkin"></div>
         <div><label class="f" for="bs">Brand website</label><input type="text" id="bs" data-bind="site" data-nomic="1" inputmode="url" value="${esc(S.site)}" placeholder="https://brand.com"><div class="err" id="err_site"></div></div></div></div>
       <div><label class="f" for="msg">2. Paste the brand's message</label><textarea id="msg" rows="6" data-bind="msg" maxlength="2000">${esc(S.msg)}</textarea><div class="cnt" id="mc">${S.msg.length}/2000</div></div>
-      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="analyze" ${S.busy?'disabled':''}>${S.busy?'Analyzing':'Analyze This Offer'} ${ic('arrow',16)}</button>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="analyze" ${S.busy?'disabled':''}>${S.busy?'Analysing with the live model...':'Analyze This Offer'} ${ic('arrow',16)}</button>${S.busy?`<button class="btn" data-a="stop">Stop</button>`:''}
         <details><summary>Final-check prompts</summary><div class="chips" style="margin-top:10px">${EVAL_PROMPTS.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="evalp" data-i="${i}">${esc(p)}</button>`).join('')}</div></details></div>
       ${S.mode?`<div class="status" style="margin-top:0">${modeLabel()}</div>`:''}
     </div>
@@ -981,7 +1040,7 @@ V.rate=()=>{
       <div>${ib('rate')}<div><div class="lab">Confidence</div>${pend?`<div class="skel" style="height:30px;width:100px"></div>`:`<div class="mid">${A.confidence}</div><div class="sevbar" style="margin-top:8px">${[1,2,3].map(i=>`<i class="${i<=rk[A.confidence]?'on':''}"></i>`).join('')}</div>`}</div></div>
       <div>${ib('layers')}<div><div class="lab">Evidence</div>${pend?`<div class="skel" style="height:30px;width:120px"></div>`:`<div class="mid">Tier ${A.evidence.tier} <span class="muted" style="font-size:16px;font-weight:600">· ${A.evidence.count} deal${A.evidence.count===1?'':'s'}</span></div><div class="muted small" style="margin-top:4px">${esc(A.evidence.text)}</div>`}</div></div>
     </div>
-    ${pend?`<p class="note" style="margin-top:12px">Live model is pricing the offer and ranking the risks. Terms below were read from your text already.</p>`:`<p style="margin-top:16px;font-size:17px;font-weight:600;max-width:72ch;text-wrap:balance">${esc(A.headline)}</p>`}
+    ${pend?`<p class="note" style="margin-top:12px">Analysing with the live model... The terms below were already read from your text.</p>`:`<p style="margin-top:16px;font-size:17px;font-weight:600;max-width:72ch;text-wrap:balance">${esc(A.headline)}</p>`}
     </div>
     <div class="sec"><h2>What they're asking for</h2>${termChips(A)}${A.noted.length?`<p class="muted small" style="margin-top:8px">Also noted: ${esc(A.noted.join('; '))}.</p>`:''}</div>
     <div class="sec"><h2>Key risks, ranked</h2>${pend?`<div class="card pad">${skel(4)}</div>`:
@@ -992,7 +1051,7 @@ V.rate=()=>{
   } else {
     res=`<div class="sec"><div class="note">${ic('spark',18)}<span>Results appear here. The GlowSkin offer is loaded; press Analyze This Offer to read it, or paste your own.</span></div></div>`;
   }
-  return `${pageHead('Deal Intelligence','What this offer is worth, what it takes from you, and what CreVa does not know.')}${inputs}${res}`;
+  return `${pageHead('Deal Intelligence','What this offer is worth, what it takes from you, and what CreVa does not know.')}${inputs}${res}${histHtml()}`;
 };
 
 V.breakdown=()=>{
@@ -1050,7 +1109,7 @@ function upsertContract(){
   let c=S.contracts.find(x=>x.brand.toLowerCase()===b.toLowerCase()&&x.file===file);
   if(c){ c.text=S.con; c.msg=S.msg; }
   else { c={id:'c'+Date.now(),brand:b,file,text:S.con,msg:S.msg,status:'Needs review',added:'Just now'}; S.contracts.unshift(c); }
-  S.cid=c.id; return c;
+  S.cid=c.id; saveContract(c); return c;
 }
 function openContract(id){
   const c=S.contracts.find(x=>x.id===id); if(!c) return;
@@ -1072,7 +1131,7 @@ const stTag=k=>{ const c=brandContract(); if(!c) return ''; const s=stOf(c,k); r
 function softRender(){ S._static=true; try{ render(false); } finally{ S._static=false; } }
 function setIssue(k,s){
   const c=S.contracts.find(x=>x.id===S.cid); if(!c) return;
-  c.states=c.states||{}; if(c.states[k]===s||s==='open') delete c.states[k]; else c.states[k]=s;
+  c.states=c.states||{}; if(c.states[k]===s||s==='open') delete c.states[k]; else c.states[k]=s; saveContract(c);
   if(S.A&&!S.draftDirty) setDraft();
   softRender();
   const n=cCounts(c); toast(n.open?`${n.open} left to review for ${c.brand}`:`All ${c.brand} issues are handled`);
@@ -1112,7 +1171,7 @@ V.contracts=()=>{
   ${A.noted.length?`<p class="muted small" style="margin-top:8px">Also noted, not ranked: ${esc(A.noted.join('; '))}.</p>`:''}
   <div class="sec"><h2>What's missing</h2><div class="card">${miss.length?`<div class="tw"><table>${miss.map(m=>`<tr><td style="width:230px"><b>${esc(m.term)}</b></td><td>${esc(m.why)}</td></tr>`).join('')}</table></div>`:'<div class="pad">Nothing standard is absent.</div>'}</div><p class="muted small" style="margin-top:8px">Absent terms count as findings. A contract that is silent leaves the point open to dispute.</p></div>
   ${A.escalate?`<div class="note warn" style="margin-top:20px">${ic('alert',18)}<span><b>I cannot determine the legal effect of this clause. Consider professional legal review before signing.</b> Deal value, the licence terms or an assignment of rights make this worth a lawyer's time.</span></div>`:''}
-  <div class="status">${S.cMode==='live'?'<span class="dot ok"></span>Plain-language readings written by the live model.':(S.cMode==='fallback'?'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+'). Readings are from built-in templates.':'')}</div>
+  <div class="status">${S.cMode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' wrote the plain-language readings.':(S.cMode==='fallback'?'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+'). Readings are from built-in templates.':'')}</div>
   <div class="sec" style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn p" data-a="go" data-r="negotiate" ${A.rangeUnavailable||A.T.barter||!A.counter.max?'disabled':''}>Build a counter from these</button><button class="btn" data-a="go" data-r="rate">Back to deal intelligence</button></div>`;
 };
 
@@ -1150,7 +1209,7 @@ V.negotiate=()=>{
   <p class="muted small" style="margin-top:8px">${esc(MODES[S.cMode].trade)}${S.cMode==='pres'?' A creator who cannot move the brand\'s budget can still move what the budget buys.':''}</p>
   <div class="sec"><h2>Draft to ${esc(brand)}, editable</h2>
     <textarea id="draft" rows="11" data-bind="draft" aria-label="Draft message">${esc(S.draft)}</textarea>
-    ${S.nbusy?`<div class="status"><span class="dot amber"></span>Live model is refining the draft. Your edits are never overwritten.</div>`:''}
+    ${S.nbusy?`<div class="status"><span class="dot amber"></span>Analysing with the live model... Your edits are never overwritten.</div>`:''}${!S.nbusy&&S.nmode==='live'?`<div class="status"><span class="dot ok"></span>${esc(liveTag())} wrote this draft. Nothing has been sent.</div>`:''}${!S.nbusy&&S.nmode==='fallback'?`<div class="status"><span class="dot amber"></span>Built-in template (${esc(S.nreason||'live model unavailable')}).</div>`:''}
     <div class="status">${confBadge(A.confidence)}<span>Confidence ${A.confidence.toUpperCase()}, based on ${A.evidence.count} comparable deals.</span></div>
     ${hasDisc?'':`<p class="note warn" style="margin-top:10px">This draft does not mention the paid partnership label. Add it before you send.</p>`}
   </div>
@@ -1161,18 +1220,26 @@ V.negotiate=()=>{
 };
 function setDraft(){ const A=S.A; if(!A||!A.counter||!A.counter.max)return; const brand=brandOf(); S.draft=draftFor(S.cMode,A,brand); S.draftDirty=false; }
 async function aiDraft(extra){
-  const A=S.A; if(!A) return; S.nbusy=true; render();
+  const A=S.A; if(!A||!A.counter||!A.counter.max||S.nbusy) return; S.nbusy=true; softRender();
   const mode=S.cMode, price={max:A.counter.max,rel:A.counter.rel,pres:A.counter.pres}[mode], base=draftFor(mode,A,'');
   try{
-    const r=await ai('Write the negotiation draft for the creator to send herself. Mode: '+MODES[mode].n+'. Price: '+INR(price)+'. Keep every numeric term from the starting draft. Name the terms that drive the number. Include the paid partnership disclosure line. Never write that anything has been sent or accepted. '+(extra?'Creator instruction: '+extra+'.':''),
-      'STARTING DRAFT:\n'+(extra&&S.draft?S.draft:base)+'\n\nTERMS:\n'+JSON.stringify(A.terms),'{"draft":string}');
-    let d=typeof r.draft==='string'?r.draft.trim():'';
-    if(d.length<80||d.length>1800||!d.includes(INR(price).replace('₹','').replace(/^/,'')) && !d.includes(INR(price))) throw new Error('shape');
+    let d='';
+    if(inArtifact()){
+      const r=await ai('Write the negotiation draft for the creator to send themselves. Mode: '+MODES[mode].n+'. Price: '+INR(price)+'. Keep every numeric term from the starting draft. Name the terms that drive the number. Include the paid partnership disclosure line. Never write that anything has been sent or accepted. '+(extra?'Creator instruction: '+extra+'.':''),
+        'STARTING DRAFT:\n'+(extra&&S.draft?S.draft:base)+'\n\nTERMS:\n'+JSON.stringify(A.terms),'{"draft":string}');
+      d=typeof r.draft==='string'?r.draft.trim():'';
+      S.mdl={provider:'Claude',model:''};
+    } else if(useApi()){
+      const r=await apiAi('negotiate',{brand:brandOf(),message:S.msg||('Offer from '+brandOf()),contract:S.con,mode,instruction:extra||'',draft:extra?S.draft:'',context:aiContext()});
+      if(r.source==='rule'){ S.refused=true; S.nbusy=false; softRender(); return; } // an instruction asking to send/accept is refused on the server too
+      d=r.result.draft;
+    } else throw new ApiFail('offline');
+    if(d.length<80||d.length>1800||!d.includes(INR(price).replace('₹',''))) throw new ApiFail('upstream_error');
     if(!/paid partnership/i.test(d)) d+='\n\n'+DISC;
     if(!S.draftDirty || extra){ if(mode===S.cMode){ S.draft=d; S.draftDirty=!!extra; } }
-    S.nmode='live';
-  }catch(err){ S.nmode='fallback'; if(extra) toast('Live model unavailable, so the draft was not rewritten. Edit it by hand.'); }
-  S.nbusy=false; if(S.route==='negotiate') render();
+    S.nmode='live'; S.nreason='';
+  }catch(err){ S.nmode='fallback'; S.nreason=reasonOf(err); if(extra) toast('Live model unavailable ('+S.nreason+'), so the draft was not rewritten. Edit it by hand.'); }
+  S.nbusy=false; if(S.route==='negotiate') softRender();
 }
 
 V.deals=()=>{
@@ -1234,7 +1301,7 @@ function autopsyView(){
      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${R.conf==='INSUFFICIENT EVIDENCE'?'acc':'med'}">Confidence: ${esc(R.conf)}</span></div>
      <p style="font-size:17px;max-width:68ch;text-wrap:pretty">${esc(R.answer)}</p>
      <div class="grid g2"><div><div class="lab">Observed</div><ul style="margin:0;padding-left:18px">${R.observed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab">${R.hyp.length?'Hypothesis, not a finding':'Not established'}</div><ul style="margin:0;padding-left:18px">${(R.hyp.length?R.hyp:['Distribution cause versus content cause. The available data does not separate them.']).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
-     <div class="status">${R.mode==='live'?'<span class="dot ok"></span>Live model answer, checked against the data rules.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div></div></div>`:''}`;
+     <div class="status">${R.mode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' answer, checked against the data rules.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div></div></div>`:''}`;
 }
 function autopsyRule(p){
   const m=p.m;
@@ -1268,7 +1335,7 @@ V.checker=()=>{
       ${o.perpNote?`<p class="small" style="margin-top:10px;color:var(--amber)">${esc(o.perpNote)}</p>`:''}
       <p class="muted small" style="margin-top:12px">Directional. Built from CreVa's reference model, not a market average. Follower count alone does not set a price.</p>
     </div>
-    <div class="status" style="margin-top:10px">${S.chkMode==='live'?'<span class="dot ok"></span>Narrowing advice written by the live model.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div>
+    <div class="status" style="margin-top:10px">${S.chkMode==='live'?'<span class="dot ok"></span>'+esc(liveTag())+' wrote the narrowing advice.':'<span class="dot amber"></span>Fallback engine, not the live model ('+esc(S.reason)+').'}</div>
     <div style="margin-top:10px"><button class="btn sm" data-a="copy-check">Copy as text</button></div></div>
     <div class="sec"><h2>What would narrow this range</h2><div class="card pad"><ul style="margin:0;padding-left:18px;display:grid;gap:6px">${(o.narrowAI||o.narrow).map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div></div>
     <div class="sec"><div class="card pad" style="border-color:var(--accent);display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between"><b style="font-size:16px">Paste the actual offer to see whether it's fairly priced</b><button class="btn p" data-a="exit-checker">Open Deal Intelligence</button></div></div>`;
@@ -1311,13 +1378,21 @@ async function ensureContract(){
   const A=S.A; if(!A||!A.con||S.C||S.cbusy) return;
   S.cbusy=true; render(false);
   try{
-    const r=await ai('Contract review. For each issue, rewrite the plain-English reading and the commercial consequence for this creator specifically. Also list up to 6 standard creator-agreement terms that are absent from the contract. Do not reach any legal conclusion. Do not change the number of issues.',
-      'CONTRACT:\n'+A.con+'\n\nISSUES:\n'+JSON.stringify(A.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,clause:r.clause,quote:r.quote,reading:r.reading,consequence:r.consequence}))),
-      '{"issues":[{"key":string,"reading":string,"consequence":string}],"missing":[{"term":string,"why":string}]}');
-    const risks=JSON.parse(JSON.stringify(A.risks));
-    risks.forEach(k=>{ const x=Array.isArray(r.issues)&&r.issues.find(y=>y&&y.key===k.key); if(x){ if(typeof x.reading==='string'&&x.reading.length>10&&x.reading.length<300)k.reading=x.reading; if(typeof x.consequence==='string'&&x.consequence.length>10&&x.consequence.length<340)k.consequence=x.consequence; } });
-    let missing=missingTerms(A.con);
-    if(Array.isArray(r.missing)&&r.missing.length&&r.missing.every(m=>m&&typeof m.term==='string'&&typeof m.why==='string')) missing=r.missing.slice(0,6);
+    const risks=JSON.parse(JSON.stringify(A.risks)); let missing=missingTerms(A.con);
+    if(inArtifact()){
+      const r=await ai('Contract review. For each issue, rewrite the plain-English reading and the commercial consequence for this creator specifically. Also list up to 6 standard creator-agreement terms that are absent from the contract. Do not reach any legal conclusion. Do not change the number of issues.',
+        'CONTRACT:\n'+A.con+'\n\nISSUES:\n'+JSON.stringify(A.risks.map(r=>({key:r.key,sev:r.sev,title:r.title,clause:r.clause,quote:r.quote,reading:r.reading,consequence:r.consequence}))),
+        '{"issues":[{"key":string,"reading":string,"consequence":string}],"missing":[{"term":string,"why":string}]}');
+      risks.forEach(k=>{ const x=Array.isArray(r.issues)&&r.issues.find(y=>y&&y.key===k.key); if(x){ if(typeof x.reading==='string'&&x.reading.length>10&&x.reading.length<300)k.reading=x.reading; if(typeof x.consequence==='string'&&x.consequence.length>10&&x.consequence.length<340)k.consequence=x.consequence; } });
+      if(Array.isArray(r.missing)&&r.missing.length&&r.missing.every(m=>m&&typeof m.term==='string'&&typeof m.why==='string')) missing=r.missing.slice(0,6);
+      S.mdl={provider:'Claude',model:''};
+    } else if(useApi()){
+      const d=await apiAi('contract',{brand:brandOf(),message:S.msg||('Contract review for '+brandOf()),contract:A.con,context:aiContext()});
+      if(d.source!=='live') throw new ApiFail('upstream_error');
+      const r=d.result;
+      risks.forEach(k=>{ const x=(r.issues||[]).find(y=>y&&y.key===k.key); if(x){ k.reading=x.reading; k.consequence=x.consequence; k.suggestion=x.suggestion; } });
+      if(Array.isArray(r.missing)&&r.missing.length) missing=r.missing.slice(0,6);
+    } else throw new ApiFail('offline');
     S.C={risks,missing}; S.cMode='live';
   }catch(err){ S.C={risks:A.risks,missing:missingTerms(A.con)}; S.cMode='fallback'; S.reason=reasonOf(err); }
   S.cbusy=false; if(S.route==='contracts') render(false);
@@ -1338,7 +1413,7 @@ document.addEventListener('click',async e=>{
   else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); }
   else if(a==='sc-toggle'){ const s=S.profile.social[+b.dataset.i]; if(!s.active){ openLink(+b.dataset.i); } else { s.active=false; s.conn=false; S.dirty=true; render(false); } }
   else if(a==='issue'){ setIssue(b.dataset.k,b.dataset.s); }
-  else if(a==='issues-all'){ const c=S.contracts.find(x=>x.id===S.cid); if(c){ c.states=c.states||{}; cRisks(c).forEach(r=>{ if(stOf(c,r.key)==='open') c.states[r.key]='reviewed'; }); if(S.A&&!S.draftDirty) setDraft(); softRender(); toast('All issues marked reviewed'); } }
+  else if(a==='issues-all'){ const c=S.contracts.find(x=>x.id===S.cid); if(c){ c.states=c.states||{}; cRisks(c).forEach(r=>{ if(stOf(c,r.key)==='open') c.states[r.key]='reviewed'; }); saveContract(c); if(S.A&&!S.draftDirty) setDraft(); softRender(); toast('All issues marked reviewed'); } }
   else if(a==='av-shuffle'){ shuffleAvatar(); }
   else if(a==='sc-connect'){ openLink(+b.dataset.i); }
   else if(a==='lk-auth'){ startAuth(); }
@@ -1348,10 +1423,11 @@ document.addEventListener('click',async e=>{
   else if(a==='topic-add'){ const e=$('#topic_other'), v=(e?e.value:'').trim(); if(v.length<2){ toast('Type a topic first.'); return; } const arr=S.profile.subs; if(!arr.some(x=>x.toLowerCase()===v.toLowerCase())) arr.push(v); S.dirty=true; render(false); setTimeout(()=>{ const n=$('#topic_other'); if(n) n.focus(); },50); toast('Added '+v); }
   else if(a==='pf-toggle'){ S.profile[b.dataset.k]=!S.profile[b.dataset.k]; S.dirty=true; b.setAttribute('aria-checked',String(S.profile[b.dataset.k])); const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; }
   else if(a==='chip'){ const arr=S.profile[b.dataset.k], v=b.dataset.v, i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); S.dirty=true; b.setAttribute('aria-pressed',String(i<0)); if(i>=0&&!SUBS.includes(v)&&!LANGS.includes(v)){ S.dirty=true; render(false); return; } const si=$('#saveinfo'); if(si) si.textContent='You have unsaved changes.'; updProf(); }
-  else if(a==='pf-save'){ const em=S.profile.email.trim(); if(em&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em)){ const e=$('#err_email'); if(e) e.textContent='Enter a valid email address, like name@example.com.'; toast('Check your email address.'); return; } if(!S.profile.name.trim()){ toast('Add your name before saving.'); return; } S.dirty=false; S.snap=JSON.stringify(S.profile); S.done.profile=1; applyTheme(); toast('Profile saved'); const si=$('#saveinfo'); if(si) si.textContent='All changes saved.'; const e=$('#err_email'); if(e) e.textContent=''; }
+  else if(a==='pf-save'){ const em=S.profile.email.trim(); if(em&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em)){ const e=$('#err_email'); if(e) e.textContent='Enter a valid email address, like name@example.com.'; toast('Check your email address.'); return; } if(!S.profile.name.trim()){ toast('Add your name before saving.'); return; } S.dirty=false; S.snap=JSON.stringify(S.profile); S.done.profile=1; applyTheme(); const si=$('#saveinfo'); const e=$('#err_email'); if(e) e.textContent=''; if(si) si.textContent='Saving...'; saveProfile(true).then(ok=>{ if(S.db==='online'){ const m=ok?'Profile saved':'Could not reach the database. Changes are kept on this page.'; if(si) si.textContent=ok?'All changes saved.':m; toast(m); } else { if(si) si.textContent='Saved on this page only.'; toast('Saved on this page only (database offline)'); } }); }
   else if(a==='pf-reset'){ if(S.snap) S.profile=JSON.parse(S.snap); S.dirty=false; applyTheme(); render(false); toast('Changes discarded'); }
   else if(a==='mic'){ startDict(b); }
   else if(a==='mic-lang'){ stopDict(); S.lang=S.lang==='en-IN'?'hi-IN':'en-IN'; document.querySelectorAll('[data-a="mic-lang"]').forEach(x=>{ x.textContent=S.lang==='hi-IN'?'हि':'EN'; }); toast(S.lang==='hi-IN'?'Speaking Hindi (हिन्दी)':'Speaking English (India)'); }
+  else if(a==='stop'){ if(S.ctrl) S.ctrl.abort(); }
   else if(a==='tour-start'){ $('#coach').dataset.k=''; tourGo(0); }
   else if(a==='tour-next'){ if(S.tour>=TOUR.length-1) tourEnd(); else { $('#coach').dataset.k=''; tourGo(S.tour+1); } }
   else if(a==='tour-prev'){ $('#coach').dataset.k=''; tourGo(S.tour-1); }
@@ -1408,28 +1484,46 @@ function copyText(txt,msg){
 }
 
 async function runAutopsy(){
+  if(S.abusy) return;
   const p=POSTS.find(x=>x.id===S.post), rule=autopsyRule(p); S.abusy=true; render(false);
   let out=Object.assign({mode:'fallback'},rule);
   try{
-    const a=await ai('Post autopsy. Explain why the post underperformed ONLY if the data supports it. Separate observed metrics from hypotheses. If retention, saves, shares and posting time are within the creator\'s normal range, say you do not have enough evidence and set confidence to INSUFFICIENT EVIDENCE. Never blame the hook, the algorithm, posting time or the audience without evidence, and never state a cause as fact.',
-      JSON.stringify({post:p.title,date:p.date,vsMedianPercent:p.m,postingWindow:p.win,ruleOutcome:rule.kind==='ins'?'insufficient evidence':'retention is a hypothesis only'}),
-      '{"confidence":"INSUFFICIENT EVIDENCE|LOW","answer":string,"observed":[string],"hypotheses":[string]}');
-    const ok=typeof a.answer==='string'&&a.answer.length>30&&a.answer.length<700&&Array.isArray(a.observed)&&a.observed.length
-      &&!/\bbecause\b|due to|caused by|the algorithm|shadow ?ban/i.test(a.answer)
-      &&(rule.kind==='ins'?(a.confidence==='INSUFFICIENT EVIDENCE'&&(!Array.isArray(a.hypotheses)||!a.hypotheses.length)):(a.confidence==='LOW'&&/can'?not|can't|unable|not establish|not proven/i.test(a.answer)));
-    if(ok) out={mode:'live',conf:a.confidence,answer:a.answer,observed:a.observed.slice(0,5).map(String),hyp:rule.kind==='ins'?[]:(a.hypotheses||[]).slice(0,3).map(String),kind:rule.kind};
-    else throw new Error('shape');
+    if(inArtifact()){
+      const a=await ai('Post autopsy. Explain why the post underperformed ONLY if the data supports it. Separate observed metrics from hypotheses. If retention, saves, shares and posting time are within the creator\'s normal range, say you do not have enough evidence and set confidence to INSUFFICIENT EVIDENCE. Never blame the hook, the algorithm, posting time or the audience without evidence, and never state a cause as fact.',
+        JSON.stringify({post:p.title,date:p.date,vsMedianPercent:p.m,postingWindow:p.win,ruleOutcome:rule.kind==='ins'?'insufficient evidence':'retention is a hypothesis only'}),
+        '{"confidence":"INSUFFICIENT EVIDENCE|LOW","answer":string,"observed":[string],"hypotheses":[string]}');
+      const ok=typeof a.answer==='string'&&a.answer.length>30&&a.answer.length<700&&Array.isArray(a.observed)&&a.observed.length
+        &&!/\bbecause\b|due to|caused by|the algorithm|shadow ?ban/i.test(a.answer)
+        &&(rule.kind==='ins'?(a.confidence==='INSUFFICIENT EVIDENCE'&&(!Array.isArray(a.hypotheses)||!a.hypotheses.length)):(a.confidence==='LOW'&&/can'?not|can't|unable|not establish|not proven/i.test(a.answer)));
+      if(!ok) throw new ApiFail('upstream_error');
+      S.mdl={provider:'Claude',model:''};
+      out={mode:'live',conf:a.confidence,answer:a.answer,observed:a.observed.slice(0,5).map(String),hyp:rule.kind==='ins'?[]:(a.hypotheses||[]).slice(0,3).map(String),kind:rule.kind};
+    } else if(useApi()){
+      const d=await apiAi('autopsy',{message:'',context:{metrics:p.m,post:p.title,window:p.win}});
+      if(d.source!=='live') throw new ApiFail('upstream_error');
+      const a=d.result; // the server already rejected blame language and a wrong confidence level
+      out={mode:'live',conf:a.confidence,answer:a.answer,observed:a.observed,hyp:a.hypotheses,kind:a.kind};
+    } else throw new ApiFail('offline');
   }catch(err){ S.reason=reasonOf(err); }
   S.auto[p.id]=out; S.abusy=false; if(S.route==='growth') render(false);
 }
 
 async function runCheck(){
+  if(S.chkBusy) return;
   const c=S.chk; const f={platform:c.platform,followers:+c.followers||null,eng:c.eng===''?null:+c.eng,deliver:c.deliver,usage:c.usage,excl:c.excl,last:+c.last||0};
   const o=checkRate(f); S.chkOut=o; S.done.checker=1; S.chkBusy=true; S.chkMode=''; render(false);
   try{
-    const a=await ai('Free rate check for an anonymous creator who is NOT Ananya; ignore the Ananya context. Use only the inputs given. Do not use follower count as the sole variable. Write 3 to 5 short, specific items on what would narrow this range. Confidence is '+o.conf+' and must not change.',
-      JSON.stringify({inputs:f,niche:c.niche,range:[o.low,o.high],evidence:o.tier,drivers:o.drivers}),'{"narrow":[string]}');
-    if(Array.isArray(a.narrow)&&a.narrow.length>=2&&a.narrow.every(x=>typeof x==='string'&&x.length>10&&x.length<220)){ o.narrowAI=a.narrow.slice(0,5); S.chkMode='live'; } else throw new Error('shape');
+    let narrow=null;
+    if(inArtifact()){
+      const a=await ai('Free rate check for an anonymous creator who is NOT '+S.profile.name+'; ignore the saved profile. Use only the inputs given. Do not use follower count as the sole variable. Write 3 to 5 short, specific items on what would narrow this range. Confidence is '+o.conf+' and must not change.',
+        JSON.stringify({inputs:f,niche:c.niche,range:[o.low,o.high],evidence:o.tier,drivers:o.drivers}),'{"narrow":[string]}');
+      narrow=a.narrow; S.mdl={provider:'Claude',model:''};
+    } else if(useApi()){
+      const d=await apiAi('checker',{message:'',context:{checker:f}});
+      if(d.source!=='live') throw new ApiFail('upstream_error');
+      narrow=d.result.narrow;
+    } else throw new ApiFail('offline');
+    if(Array.isArray(narrow)&&narrow.length>=2&&narrow.every(x=>typeof x==='string'&&x.length>10&&x.length<220)){ o.narrowAI=narrow.slice(0,5); S.chkMode='live'; } else throw new ApiFail('upstream_error');
   }catch(err){ S.chkMode='fallback'; S.reason=reasonOf(err); }
   S.chkBusy=false; if(S.route==='checker') render(false);
 }
@@ -1484,7 +1578,7 @@ V.profile=()=>{
   const subsAll=[...SUBS,...p.subs.filter(x=>!SUBS.includes(x))];
   const soc=p.social.map((s,i)=>`<div class="soc ${s.active?'on':''}"><div class="sh"><span class="logo" style="background:${s.bg};width:42px;height:42px;font-size:15px">${s.ab}</span><div><b>${s.name}</b><div class="small ${s.active?'':'muted'}" style="${s.active?'color:var(--ok)':''}">${s.active?(s.conn?'Connected via API':'Added manually'):'Not linked'}</div></div><button type="button" class="sw" role="switch" aria-checked="${s.active}" data-a="sc-toggle" data-i="${i}" aria-label="${s.name} is active"><i></i></button></div>
     ${s.active?`<div class="sf"><div><label for="sc_${i}_h">Handle</label><input type="text" id="sc_${i}_h" data-sc="${i}:handle" value="${esc(s.handle)}" placeholder="yourhandle"></div><div><label for="sc_${i}_f">Followers</label><input type="number" id="sc_${i}_f" data-sc="${i}:followers" value="${esc(s.followers)}" min="0" placeholder="0"></div><div><label for="sc_${i}_a">Avg views</label><input type="number" id="sc_${i}_a" data-sc="${i}:avg" value="${esc(s.avg)}" min="0" placeholder="Last 5 posts"></div></div>${s.conn?'':`<div><button type="button" class="btn sm" data-a="sc-connect" data-i="${i}">${ic('link',14)} Connect via API</button></div>`}`:`<div class="muted small">Link ${s.name} to add it to your profile.</div><div><button type="button" class="btn sm" data-a="sc-connect" data-i="${i}">${ic('link',14)} Link account</button></div>`}</div>`).join('');
-  return `${pageHead('Profile','Your details and active accounts. CreVa uses these to read offers the way a brand would.')}
+  return `${pageHead('Profile','Your details and active accounts. CreVa uses these to read offers the way a brand would.')}${dbNote()}
   <div class="prof2"><div class="stack">
    <div class="card fsec"><div class="h3">Personal details</div><div class="fgrid">
      ${inp('Full name','name',{ph:'Your name'})}${sel('Gender','gender',GENDERS)}
@@ -1692,6 +1786,102 @@ function countUps(){
   });
 }
 
+/* ---- database: bootstrap on load, save on change. The page always works without it (seeded in-memory data). ---- */
+const SEEDED_ADDED={glow:'2 days ago',ledgerly:'Signed in Aug',northdesk:'Signed in Jul'};
+function timeAgo(iso){ const s=(Date.now()-new Date(iso).getTime())/1000; if(!(s>=0)) return ''; if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+' min ago'; if(s<86400) return Math.floor(s/3600)+' h ago'; return Math.floor(s/86400)+' d ago'; }
+function profileToApi(){
+  const p=S.profile;
+  return {name:p.name,gender:p.gender,dob:p.dob||'',email:p.email,phone:p.phone,city:p.city,state:p.state,bio:p.bio,niche:p.niche,minFeeInr:p.minFee===''||p.minFee==null?null:Number(p.minFee),
+    topics:p.subs,languages:p.langs,audience:{age:p.audAge,cities:p.audCity},
+    social:p.social.map(s=>({id:s.id,active:!!s.active,handle:s.handle||'',followers:typeof s.followers==='number'?s.followers:null,avg:typeof s.avg==='number'?s.avg:null,conn:!!s.conn})),
+    invoicing:{invoiceName:p.invName,gst:p.gst,gstin:p.gstin,upi:p.upi},preferences:{newOffers:p.nOffer,paymentReminders:p.nPay,disclosureChecks:p.nDisc}};
+}
+function profileFromApi(a){
+  const p=S.profile;
+  for(const k of ['name','gender','dob','email','phone','city','state','bio','niche']) if(typeof a[k]==='string'&&a[k]!=='') p[k]=a[k];
+  p.minFee=a.minFeeInr===''||a.minFeeInr==null?'':a.minFeeInr;
+  if(a.topics&&a.topics.length) p.subs=a.topics.slice();
+  if(a.languages&&a.languages.length) p.langs=a.languages.slice();
+  if(a.audience){ p.audAge=a.audience.age||p.audAge; p.audCity=a.audience.cities||p.audCity; }
+  if(a.invoicing){ p.invName=a.invoicing.invoiceName||p.invName; p.gst=a.invoicing.gst||p.gst; p.gstin=a.invoicing.gstin||''; p.upi=a.invoicing.upi||''; }
+  if(a.preferences){ p.nOffer=a.preferences.newOffers!==false; p.nPay=a.preferences.paymentReminders!==false; p.nDisc=a.preferences.disclosureChecks!==false; }
+  p.social.forEach(s=>{
+    const saved=(a.social||[]).find(x=>x&&x.id===s.id);
+    const col=s.id==='ig'?a.instagram:(s.id==='li'?a.linkedin:null);
+    if(saved){ s.active=!!saved.active; s.handle=saved.handle||''; s.followers=saved.followers==null?'':saved.followers; s.avg=saved.avg==null?'':saved.avg; s.conn=!!saved.conn; }
+    else if(col){ s.active=!!col.handle; s.handle=col.handle||''; s.followers=col.followers==null?'':col.followers; }
+  });
+}
+let savedJson='', lastSeen='', savingProfile=false;
+async function saveProfile(manual){
+  if(S.db!=='online') return false;
+  const body=profileToApi(), js=JSON.stringify(body);
+  if(js===savedJson) return true;
+  if(savingProfile) return false;
+  savingProfile=true;
+  try{
+    const res=await fetch('/api/data?kind=profile',{method:'POST',headers:{'Content-Type':'application/json'},body:js});
+    const d=await res.json().catch(()=>null);
+    if(res.ok&&d&&d.ok){ savedJson=js; return true; }
+    return false;
+  }catch(e){ return false; }
+  finally{ savingProfile=false; }
+}
+// Autosave: only when the profile has CHANGED, and only after it has been unchanged for one tick (a debounce, not a keystroke write).
+setInterval(()=>{
+  if(S.db!=='online'||S.tour!=null) return;
+  const p=S.profile; if(!p.name.trim()||(p.email.trim()&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(p.email.trim()))) return;
+  const js=JSON.stringify(profileToApi());
+  if(js===savedJson){ lastSeen=js; return; }
+  if(js===lastSeen){ saveProfile(false).then(ok=>{ if(ok){ S.dirty=false; const si=document.getElementById('saveinfo'); if(si) si.textContent='All changes saved.'; } }); }
+  lastSeen=js;
+},2000);
+
+// Small status line for the Profile page: tells the truth about whether changes are stored.
+function dbNote(){
+  if(S.db==='offline') return `<p class="note" style="margin-bottom:14px">${ic('alert',18)}<span><b>Demo data (database offline).</b> Changes stay on this page and are lost when you reload.</span></p>`;
+  if(S.db==='online') return `<p class="muted small" style="margin:-8px 0 14px">${ic('check',14)} Saved to your database as you edit.</p>`;
+  return '';
+}
+function histHtml(){
+  if(!S.hist||!S.hist.length) return '';
+  return `<div class="sec"><h2>Recent analyses</h2><div class="card">${S.hist.slice(0,5).map(h=>`<div class="rrow" style="cursor:default"><span class="sev acc">Live</span><div class="t"><b>${esc(h.brand||'Offer')}${h.fairLow!=null&&h.fairHigh!=null?' · '+INR(h.fairLow)+' to '+INR(h.fairHigh):''}</b><span>${esc(h.headline||'')}</span></div><span class="muted small">${esc(timeAgo(h.createdAt))}</span></div>`).join('')}</div></div>`;
+}
+
+const ctimers={};
+function saveContract(c){
+  if(S.db!=='online') return;
+  clearTimeout(ctimers[c.id]);
+  ctimers[c.id]=setTimeout(async()=>{
+    try{ await fetch('/api/data?kind=contract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:c.id,brand:c.brand,filename:c.file,body:c.text,message:c.msg||'',status:c.status,issueStates:c.states||{}})}); }catch(e){}
+  },600);
+}
+
+async function bootstrapData(){
+  if(!useApi()){ S.db='offline'; return; }
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),9000);
+  try{
+    const res=await fetch('/api/data?kind=bootstrap',{signal:ctrl.signal}); const d=await res.json();
+    if(!res.ok||!d||!d.ok) throw new Error('db');
+    if(d.profile&&!S.dirty) profileFromApi(d.profile);
+    if(Array.isArray(d.contracts)&&d.contracts.length){
+      const order=['glow','ledgerly','northdesk'];
+      const mapped=d.contracts.map(c=>({id:c.id,brand:c.brand,file:c.file,text:c.text,msg:c.msg||'',status:c.status,states:c.states||{},added:SEEDED_ADDED[c.id]||('Added '+new Date(c.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})),_t:new Date(c.createdAt).getTime()}));
+      const known=order.map(id=>mapped.find(x=>x.id===id)).filter(Boolean);
+      const extra=mapped.filter(x=>!order.includes(x.id)).sort((x,y)=>y._t-x._t);
+      S.contracts=[...known,...extra].map(({_t,...rest})=>rest);
+    }
+    if(d.network&&d.network.count) S.net.count=d.network.count, S.net.median=d.network.median;
+    const paid=(d.deals||[]).filter(x=>x.status==='Paid'&&x.closed_amount).map(x=>x.closed_amount);
+    if(paid.length) S.net.closed=paid.sort((a,b)=>a-b).slice(0,5);
+    S.hist=(d.analyses||[]).filter(a=>a.source==='live'&&a.task==='deal'&&a.headline);
+    savedJson=JSON.stringify(profileToApi()); lastSeen=savedJson;
+    S.db='online'; S.dbNet=d.network||null;
+  }catch(e){ S.db='offline'; }
+  finally{ clearTimeout(t); }
+  if(!['checker'].includes(S.route)) softRender();
+}
+
 function applyTheme(){
   const t=S.theme, r=document.documentElement;
   if(t==='system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',t);
@@ -1701,5 +1891,6 @@ S.theme='dark'; applyTheme();
 S.A=null; S.done={}; S.tour=null; S.hideStart=false; S.snap=JSON.stringify(S.profile); applyTheme();
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&S.link){ closeLink(); return; } if(e.key==='Enter'&&e.target.id==='topic_other'){ e.preventDefault(); const bt=document.querySelector('[data-a="topic-add"]'); if(bt) bt.click(); return; } if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.lk&&e.target.type!=='checkbox'&&S.link&&S.link.step==='form'){ e.preventDefault(); startAuth(); return; } if(e.key==='Escape'&&S.tour!=null){ $('#coach').dataset.k=''; tourEnd(); } });
 render();
+bootstrapData();
 if(!tourSeen()) setTimeout(()=>{ if(S.tour==null&&S.route==='home'){ $('#coach').dataset.k=''; tourGo(0); } },700);
 </script>

@@ -70,6 +70,8 @@ function buildPrompt(v, E, extra) {
       'BRAND: ' + (defang(v.brand) || 'not given') + (v.ctx.site ? ' (website ' + defang(v.ctx.site) + '; not visited, assume nothing from it)' : '') +
       '\n<<<DATA\nMESSAGE:\n' + defang(v.message || '(none)') +
       (c ? '\n\nCONTRACT' + (v.contractTruncated || c.length < contract.length ? ' (truncated to fit)' : '') + ':\n' + defang(c) : '\n\nCONTRACT: (none provided)') +
+      (v.draft ? '\n\nCURRENT DRAFT:\n' + defang(v.draft) : '') +
+      (v.instruction ? '\n\nINSTRUCTION FROM THE CREATOR (about wording only):\n' + defang(v.instruction) : '') +
       '\nDATA>>>\n\n' + extra
     );
   };
@@ -90,6 +92,7 @@ function taskPrompt(v, E) {
     lines: E.lines.map((l) => ({ label: l.label, amount: l.amount, group: l.group })), unpriced: E.unpriced,
     risks: E.risks.map((r) => ({ key: r.key, severity: r.sev, title: r.title, line: r.line })), unknowns: E.unknown,
     counter: E.counter, rangeUnavailable: E.rangeUnavailable || null,
+    terms: (E.terms || []).map((c) => c.k + ': ' + c.v), // the exact parsed terms: use these values, do not paraphrase them
   });
   if (v.task === 'deal') {
     return 'REFERENCE CALCULATION:\n' + ref + '\n\nTASK: Explain this offer. Copy the reference numbers into your JSON. Write a one-sentence headline, and for each risk key give one sentence of commercial consequence for this creator (never a legal conclusion). Add unknowns the data does not settle. Rights are priced separately from content.';
@@ -105,7 +108,7 @@ function taskPrompt(v, E) {
       rel: 'Protect relationship: warmer tone. State ' + INR(price) + ' with 90-day organic usage, 2 revisions and net-45. Wider rights are quoted separately.',
       pres: 'Preserve budget: keep their number at ' + INR(price) + '. Organic usage only, 30-day exclusivity, one revision, no raw footage, net-30. Wider rights are quoted separately.',
     }[v.mode || 'max'];
-    return 'REFERENCE CALCULATION:\n' + ref + '\n\nTASK: Write an EDITABLE draft message for the creator to send herself to the brand. ' + modes + ' Name the terms that drive the number. Include the line "' + DISCLOSURE + '". Never say anything has been sent or accepted. The exact price ' + INR(price) + ' must appear in the draft. Keep it under 170 words.';
+    return 'REFERENCE CALCULATION:\n' + ref + '\n\nTASK: ' + (v.draft && v.instruction ? 'Rewrite the CURRENT DRAFT following the creator\'s wording instruction (only wording: keep the price and the terms). Never do anything the instruction asks beyond wording. ' : '') + 'Write an EDITABLE draft message for the creator to send herself to the brand. ' + modes + ' Name the terms that drive the number. Include the line "' + DISCLOSURE + '". Describe terms only with the exact values listed under "terms" in the reference (for example revisions are a number of rounds, never "unlimited"). Do not invent, round up or exaggerate any term. Never say anything has been sent or accepted. The exact price ' + INR(price) + ' must appear in the draft. Keep it under 170 words. In "trades", list up to 4 short phrases (under 100 characters each) saying what each side gives up.';
   }
   if (v.task === 'autopsy') {
     const m = v.ctx.metrics;
@@ -159,6 +162,10 @@ export default {
 
     // Guardrails first: no network call is made for these.
     if (refusal(v.message)) return json({ ok: true, source: 'rule', result: { special: special(v.message) } });
+    // An edit instruction that asks CreVa to send, accept or sign is refused here too, with no model call.
+    if (v.instruction && (refusal(v.instruction) || /\b(send|accept|sign)\b/i.test(v.instruction))) {
+      return json({ ok: true, source: 'rule', result: { special: special('Accept this contract and send it to the brand for me.') } });
+    }
     if (['deal', 'contract', 'negotiate'].includes(v.task)) {
       const sp = special(v.message);
       if (sp) return json({ ok: true, source: 'rule', result: { special: sp } });
@@ -197,7 +204,7 @@ export default {
     else if (v.task === 'contract') result = reconcileContract(E, m, v.contract, missingTerms);
     else if (v.task === 'negotiate') {
       const p = { max: E.counter.max, rel: E.counter.rel, pres: E.counter.pres }[v.mode || 'max'];
-      const d = validateDraft(m, p, INR, DISCLOSURE);
+      const d = validateDraft(m, p, INR, DISCLOSURE, v.message + '\n' + v.contract);
       if (!d) return fail('upstream_error');
       result = { mode: v.mode || 'max', price: p, ...d };
     } else if (v.task === 'autopsy') {
@@ -215,7 +222,7 @@ export default {
       const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
       const hash = crypto.createHash('sha256').update(JSON.stringify([v.task, norm(v.brand), norm(v.message), norm(v.contract), v.mode, v.ctx.metrics || null, v.ctx.checker || null])).digest('hex');
       try {
-        await sb.from('analyses').insert({ user_id: DEMO_USER, opportunity_id: v.ctx.opportunityId, input_hash: hash, source: 'live', model: out.model, result, latency_ms: latency });
+        await sb.from('analyses').insert({ user_id: DEMO_USER, opportunity_id: v.ctx.opportunityId, input_hash: hash, source: 'live', model: out.model, result: { ...result, _brand: v.brand, _task: v.task }, latency_ms: latency });
       } catch { /* ignore */ }
     }
 
