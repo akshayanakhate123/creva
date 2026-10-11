@@ -21,6 +21,16 @@ function loadEnv(file) {
 }
 loadEnv(path.join(root, '.env.local'));
 
+// Dev only: api files import from lib/, which Node caches. Only the api file itself is re-imported on change
+// (lib/ files are cached by Node). Restart `npm run dev` after editing lib/ files.
+function latestMtime() {
+  let t = 0;
+  for (const dir of ['api']) {
+    for (const f of fs.readdirSync(path.join(root, dir))) t = Math.max(t, fs.statSync(path.join(root, dir, f)).mtimeMs);
+  }
+  return t;
+}
+
 async function readBody(req) {
   const chunks = [];
   let size = 0;
@@ -39,7 +49,7 @@ async function runApi(req, res, name) {
     return res.end(JSON.stringify({ ok: false, code: 'not_found' }));
   }
   try {
-    const mod = await import(pathToFileURL(file).href + '?t=' + fs.statSync(file).mtimeMs);
+    const mod = await import(pathToFileURL(file).href + '?t=' + latestMtime());
     const handler = mod.default;
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) headers.set(k, Array.isArray(v) ? v.join(', ') : v);
