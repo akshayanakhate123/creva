@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import { analyze, special, refusal, checkRate, missingTerms, INR } from '../lib/engine.js';
 import { SYSTEM_RULES, SYSTEM_TONE } from '../lib/system.js';
 import { callGroq, GroqError } from '../lib/groq.js';
-import { clientIp, ipLimited, memDaily } from '../lib/limits.js';
+import { clientIp, ipLimited, memDaily, sameOrigin } from '../lib/limits.js';
 import { getSupabase, DEMO_USER } from '../lib/supabase.js';
 import {
   validateInput, schemaFor, reconcileDeal, reconcileContract, validateAutopsy, validateDraft, defang, allowedFigures, uncited,
@@ -172,8 +172,7 @@ export default {
     if (request.method !== 'POST') return fail('bad_request');
 
     // Same-origin only. A browser always sends Origin on cross-site POSTs.
-    const origin = request.headers.get('origin');
-    if (origin && origin !== new URL(request.url).origin) return fail('bad_request');
+    if (!sameOrigin(request)) return fail('bad_request');
 
     const wait = ipLimited(clientIp(request), IP_PER_MIN);
     if (wait) return fail('rate_limited', { retry_after: wait });

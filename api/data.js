@@ -14,7 +14,7 @@
 // NOTE: this is a public single-demo-user prototype: anyone who can open the site can edit the demo data.
 // Writes are validated, size-capped, rate-limited per IP and same-origin only. There is no login by design.
 import { getSupabase, supabaseConfigured, DEMO_USER } from '../lib/supabase.js';
-import { clientIp, ipLimited } from '../lib/limits.js';
+import { clientIp, ipLimited, sameOrigin } from '../lib/limits.js';
 import {
   validateProfile, validateContract, validateEval, validateEvent, validateDeal, validateShare,
   profileFromRow, contractFromRow, analysisFromRow, median, MAX_CONTRACTS, MAX_DEALS, fromDbDealId,
@@ -162,8 +162,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
     const kind = url.searchParams.get('kind');
-    const origin = request.headers.get('origin');
-    if (origin && origin !== url.origin) return fail('bad_request');
+    if (!sameOrigin(request)) return fail('bad_request');
     if (ipLimited('data:' + clientIp(request), 60)) return fail('rate_limited');
 
     if (!supabaseConfigured()) return fail('db_not_configured');

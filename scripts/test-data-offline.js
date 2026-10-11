@@ -16,6 +16,13 @@ let r = await call('GET', 'bootstrap');
 ok('no env vars gives 503 db_not_configured (front end uses seeded data)', r.status === 503 && r.code === 'db_not_configured');
 r = await call('GET', 'bootstrap', null, { origin: 'https://evil.example' });
 ok('cross-origin rejected', r.code === 'bad_request');
+// On Vercel the function sees an http:// URL while the browser's Origin is https:// for the same site. That must be allowed.
+r = await call('GET', 'bootstrap', null, { origin: 'https://creva.example', host: 'creva.example' });
+ok('same site over https behind a proxy is allowed (the live photo-save bug)', r.code === 'db_not_configured', r.code);
+r = await call('GET', 'bootstrap', null, { origin: 'https://evil.example', host: 'creva.example' });
+ok('another site is still rejected behind a proxy', r.code === 'bad_request');
+r = await call('GET', 'bootstrap', null, { origin: 'https://evil.example', 'x-forwarded-host': 'creva.example' });
+ok('another site is rejected when the forwarded host is ours', r.code === 'bad_request');
 
 const good = { name: 'Ananya Sharma', email: 'a@b.co', topics: ['Careers'], languages: ['English'], social: [{ id: 'ig', active: true, handle: 'ananyasharma', followers: 54000 }, { id: 'li', active: true, handle: 'ananya-sharma', followers: 18000 }, { id: 'zz', active: true, handle: 'x' }] };
 let v = validateProfile(good);
