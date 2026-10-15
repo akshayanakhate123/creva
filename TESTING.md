@@ -12,10 +12,10 @@ Cases 1 to 5 are **offers**, so they go in **Rate Intelligence** (left menu, tit
 3. Click **Analyze This Offer**. Leave the contract box empty.
 4. Read the result under the "Result" heading. The line above it says "Live model (Groq...)".
 
-Cases 6 to 10 are **questions**, so they go in **Ask CreVa** (left menu, second item):
+Cases 6 to 10 are **questions**, so they go in **Ask CreVa** (left menu, second item). A question like "Why did my Reel flop?" does not say which Reel, so CreVa asks instead of guessing:
 1. Click in the box under "Your question" and paste the text below, or click one of the **Try one** examples.
-2. Click **Ask CreVa**.
-3. Read the answer under "CreVa's answer". It is a built-in rule with no model call.
+2. Optionally pick **About which post?** or **About which offer?** first. If you do not, CreVa asks and shows buttons to choose from.
+3. Click **Ask CreVa**, answer any "which one?" question by clicking a button, and read the answer under "CreVa's answer". It is built-in rules with no model call.
 
 (The same questions still work if you paste them into Rate Intelligence. If you type something into Ask CreVa that is actually a brand's offer, it says so and offers **Analyze as an offer**.)
 
@@ -29,11 +29,11 @@ Wait about 25 seconds between cases 1 to 5. They call the free Groq model, which
 | 4 | `I have never done a brand deal. A brand offered ₹20,000 for one LinkedIn post.` | Confidence **Low**, **Tier 3 · 0 deals**, no Tier 1 or Tier 2 claim. The Unknown list says what data is missing (closed deals, average views, platform audience). |
 | 5 | Click **GlowSkin** in step 1 instead of Custom, then **Analyze This Offer** | Indicative **₹70,000**, fair range **₹62,000 to ₹70,000**, **4 risks** (perpetual usage, 6-month exclusivity, net-90, three revisions). Click **Build a counter**: **₹68,000**. Some issues may already show REVIEWED, CLEARED or DISMISSED from earlier clicks. Press Reopen to reset them. |
 | 6 | `Write a caption for my GlowSkin serum post.` | "Built-in rule" label. A caption draft starting with "Paid partnership with GlowSkin. #ad" and a disclosure note. No claims about skin or health results. |
-| 7 | `Why did my Reel flop?` | "Insufficient evidence", and the words "I don't have enough evidence". It lists what data it needs and names no cause. |
-| 8 | `Accept and send it for me` | "Declined". It says CreVa never accepts, signs or sends anything for you, and offers a draft you review and send yourself. No model call. |
-| 9 | `The brand says ₹15K is final, should I walk away?` | "Trade-off, your call". It says walking away is one option, not the only one, gives two options, and lists the unknowns. It never says "walk away" as a verdict. |
-| 9b | Profile > set **Minimum fee for one Reel, ₹** to 30000 and save, then repeat case 9 on Ask CreVa | The answer now says "Your saved minimum fee for one Reel is ₹30,000" and that ₹15,000 is ₹15,000 below it. Clear the minimum fee afterwards. |
-| 10 | `My followers are up 25% but my deals are flat.` | "Correlation, not cause". It lists several possible explanations and suggests tests. It does not say growth should raise your rate. |
+| 7 | `Why did my Reel flop?` | Title **"Which post do you mean?"**. It says it cannot tell which Reel and does not have enough evidence, and shows buttons for the **2 Oct** and **21 Sep** Reels. Click **2 Oct**: it reads that Reel's numbers (reach -42% versus your median, retention, saves, shares), says there is not enough evidence to name a cause, and offers **Open Post Autopsy for this post**. Click 21 Sep instead and the answer changes (weak early retention is flagged as consistent with the data, not proven). You can also pick the post in the **About which post?** menu before asking. |
+| 8 | `Accept and send it for me` | "Declined". It says CreVa never accepts, signs or sends anything for you. Because you did not say which offer, it shows **Build a counter for GlowSkin / FintechCo / WellnessCo**. Pick GlowSkin in **About which offer?** first and ask again: the title becomes "CreVa will not accept, sign or send the GlowSkin offer for you" with a **Build a counter for GlowSkin** button that opens Negotiate (counter ₹68,000). No model call. |
+| 9 | `The brand says ₹15,000 is final. Should I walk away?` | Title **"Which offer is this about?"** with GlowSkin, FintechCo and WellnessCo buttons. Click **GlowSkin**: the answer compares ₹15,000 with that package: "fair range ... ₹62,000 to ₹70,000. ₹15,000 is ₹47,000 below the bottom of it". Then "Walking away is one option. It is not the only one", two options, and the unknowns. It never gives a walk-away verdict. Pick **WellnessCo** instead: it says the offer is product only, so there is no cash fee to compare. |
+| 9b | Profile > set **Minimum fee for one Reel, ₹** to 30000 and save, then repeat case 9 (pick GlowSkin) | The answer also says "Your saved minimum fee for one Reel is ₹30,000" and that ₹15,000 is ₹15,000 below it. Clear the minimum fee afterwards. |
+| 10 | `My followers are up 25% but my deals are flat.` | "Correlation, not cause". It lists several possible explanations and suggests three tests. It does not say growth should raise your rate. No post or offer is needed. |
 
 Shortcut: on Ask CreVa, **Try one** has ready-made versions of cases 6 to 10. On Rate Intelligence, **Final-check prompts** below the message box has versions of cases 1, 2 and 4.
 

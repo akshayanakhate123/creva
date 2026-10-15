@@ -101,27 +101,59 @@ ok('Deal Intelligence renders for a custom offer with no brand name', /KEY RISKS
 t = show("S.route='negotiate'; setDraft()");
 ok('a counter draft can be built with no brand name', app.run('S.draft').length > 40);
 
-// ---- Ask CreVa: questions that are not offers have their own screen ----
-t = show("S.route='ask'; S.askAns=null; S.askText=''");
-ok('Ask CreVa is in the menu and shows a question box and examples', /Ask CreVa/.test(app.text()) && !!app.window.document.getElementById('askq') && /Try one/.test(t));
+// ---- Ask CreVa: questions that are not offers have their own screen, and it asks which post or offer when it cannot tell ----
+t = show("S.route='ask'; S.askAns=null; S.askText=''; S.askPost=''; S.askOffer=''");
+ok('Ask CreVa is in the menu and shows a question box, post and offer pickers and examples', /Ask CreVa/.test(app.text()) && !!app.window.document.getElementById('askq') && !!app.window.document.getElementById('ask_post') && !!app.window.document.getElementById('ask_offer') && /Try one/.test(t));
 const ask = async (q) => { app.run('S.askText=' + JSON.stringify(q)); await click('[data-a="ask-go"]'); return app.text(); };
+const reset = () => show("S.route='ask'; S.askAns=null; S.askPost=''; S.askOffer=''");
+
+// which Reel?
 t = await ask('Why did my Reel flop?');
-ok('flop question: insufficient evidence, no invented cause', /enough evidence/.test(t) && /Built-in|CreVa's answer/i.test(t));
-t = await ask('Write a caption for my GlowSkin serum post.');
+ok('flop with no post: asks which post, says it has not enough evidence, guesses nothing', /Which post do you mean/.test(t) && /enough evidence/.test(t) && /2 Oct/.test(t) && /21 Sep/.test(t) && !/other metrics you gave/.test(t));
+await click('[data-a="ask-pick"][data-k="post"][data-v="oct2"]');
+t = app.text();
+ok('after picking the 2 Oct Reel it reads that post: its numbers, no invented cause', /2 Oct/.test(t) && /Reach -42%/.test(t) && /enough evidence/.test(t) && /OPEN POST AUTOPSY FOR THIS POST/.test(t));
+await click('[data-a="special-go"][data-r="autopsy"]');
+ok('Open Post Autopsy lands on the same post', app.run('S.route') === 'growth' && app.run('S.post') === 'oct2');
+reset(); await click('[data-a="ask-chip"][data-i="0"]'); app.run("S.askPost='sep21'"); t = await ask('Why did my Reel flop?');
+ok('21 Sep Reel is read differently (weak early retention)', /21 Sep/.test(t) && /retention/i.test(t));
+t = await ask('Why did my Reel flop? Reach is 40% down but everything else is normal.');
+ok('if the creator gives the numbers in the question, those are used', /You said reach is down 40%/.test(t));
+ok('the rule answer never claims metrics that were not given', !/other metrics you gave/.test(app.run("special('Why did my Reel flop?').body.join(' ')")));
+
+// which offer?
+reset(); t = await ask('The brand says ₹15,000 is final. Should I walk away?');
+ok('walk away with no offer: asks which offer', /Which offer is this about/.test(t) && /GlowSkin/.test(t) && /WellnessCo/.test(t));
+await click('[data-a="ask-pick"][data-k="offer"][data-v="glow"]');
+t = app.text();
+ok('after picking GlowSkin it compares ₹15,000 with that package: ₹62,000 to ₹70,000, ₹47,000 below', /₹62,000 to ₹70,000/.test(t) && /₹47,000 below the bottom/.test(t) && /Walking away is one option/.test(t) && !/you should walk away/i.test(t));
+app.run("S.profile.minFee=30000"); t = await ask('The brand says ₹15,000 is final. Should I walk away?'); app.run("S.profile.minFee=''");
+ok('with a saved minimum fee it also quotes the saved floor', /saved minimum fee for one Reel is ₹30,000/.test(t));
+reset(); t = await ask('The brand says ₹65,000 is final. Should I walk away?'); await click('[data-a="ask-pick"][data-k="offer"][data-v="glow"]');
+ok('a price inside the fair range is described as such', /inside or above that range/.test(app.text()));
+reset(); t = await ask('The brand says ₹15,000 is final. Should I walk away?'); await click('[data-a="ask-pick"][data-k="offer"][data-v="well"]');
+ok('a barter offer has no cash figure to compare with', /product only, so there is no cash fee/.test(app.text()));
+
+// accept and send
+reset(); t = await ask('Accept and send it for me');
+ok('accept and send: declined, and asks which offer before building a counter', /will not accept, sign or send for you/i.test(t) && /Build a counter for GlowSkin/.test(t));
+app.run("S.askOffer='glow'"); t = await ask('Accept and send it for me');
+ok('with GlowSkin selected the refusal names it and offers a counter for it', /GlowSkin offer for you/.test(t) && /BUILD A COUNTER FOR GLOWSKIN/.test(t));
+await click('[data-a="special-go"][data-o="glow"]');
+ok('the counter button opens Negotiate for that offer', app.run('S.route') === 'negotiate' && app.run('S.brandName') === 'GlowSkin' && /68,000/.test(app.run('S.draft')));
+
+// other
+reset(); t = await ask('Write a caption for my GlowSkin serum post.');
 ok('caption request: draft with the disclosure label', /Paid partnership with GlowSkin/.test(t) && !/cures|clinically|guarantee/i.test(t));
-t = await ask('Accept and send it for me');
-ok('accept and send: declined', /will not accept, sign or send/i.test(t));
-t = await ask('The brand says ₹15,000 is final. Should I walk away?');
-ok('walk-away: trade-off, no verdict', /Walking away is one option/.test(t) && !/you should walk away/i.test(t));
 t = await ask('My followers are up 25% but deals are flat');
 ok('followers up, deals flat: correlation not cause', /correlation/i.test(t));
 t = await ask('Brand offered ₹30,000 for one Reel');
-ok('something that is an offer is pointed to Rate Intelligence', /Not answered here/.test(t) && /ANALYZE AS AN OFFER/.test(t));
+ok('an offer is pointed to Rate Intelligence', /Not answered here/.test(t) && /ANALYZE AS AN OFFER/.test(t));
 await click('[data-a="ask-offer"]');
 ok('Analyze as an offer carries the text to Rate Intelligence', app.run('S.route') === 'rate' && app.run('S.msg') === 'Brand offered ₹30,000 for one Reel');
 app.run("S.profile.plan='Free'");
-t = await (async () => { show("S.route='ask'; S.askAns=null"); return ask('Why did my Reel flop?'); })();
-ok('Ask CreVa stays available on the Free plan', /enough evidence/.test(t) && !/part of the Pro plan/.test(t));
+t = await (async () => { reset(); return ask('Why did my Reel flop?'); })();
+ok('Ask CreVa stays available on the Free plan', /Which post do you mean/.test(t) && !/part of the Pro plan/.test(t));
 app.run("S.profile.plan='Pro'");
 
 app.close();

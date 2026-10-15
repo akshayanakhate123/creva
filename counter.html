@@ -736,10 +736,10 @@ function refusal(msg){
   return /\b(?:accept|sign|send|agree to|reply to|submit)\b[^.\n]{0,70}\b(?:contract|offer|deal|agreement|it|this|the brand)\b[^.\n]{0,60}\b(?:for me|on my behalf|to the brand|back to|to them|to them for me)\b/i.test(m);
 }
 function special(msg, opts){
-  const m=msg.trim();
-  if(refusal(m)) return {kind:'refuse',badge:'Declined',title:'CreVa will not accept, sign or send for you.',
+  const m=msg.trim(), off=(opts&&opts.offer)||null; // off = the offer the question is about (brand, fair range, their ask), when the creator has said which
+  if(refusal(m)) return {kind:'refuse',badge:'Declined',title:off?'CreVa will not accept, sign or send the '+off.brand+' offer for you.':'CreVa will not accept, sign or send for you.',
     body:['CreVa never accepts, signs or sends anything on your behalf. You make that call and you send it yourself.','What I can do: draft a reply for you to review, edit and send from your own account. Pick a mode in Negotiate and I will name the terms that drive the number so the counter does not read as just a bigger price.'],
-    conf:'Not a pricing output',actions:[['BUILD A COUNTER','negotiate']]};
+    conf:'Not a pricing output',actions:off?[['BUILD A COUNTER FOR '+off.brand.toUpperCase(),'negotiate',off.id]]:[['BUILD A COUNTER','negotiate']]};
   if(/\bcaption\b/i.test(m)) {
     const brand=/glowskin/i.test(m)?'GlowSkin':'the brand';
     return {kind:'caption',badge:'Draft for you to edit',title:'Caption draft for your '+brand+' serum post',
@@ -747,7 +747,7 @@ function special(msg, opts){
       conf:'Not a pricing output',actions:[]};
   }
   if(/(flop|underperform|why did)[^.?]*\b(reel|post|video)\b|\b(reach|views)[^.?]*\b(down|dropped|lower)\b/i.test(m) && !/offer|brand/i.test(m)) return {kind:'flop',badge:'Insufficient evidence',title:'I don\'t have enough evidence to identify why this happened.',
-    body:['Reach is well below your median, but the other metrics you gave are normal. That does not point to one cause. A distribution cause and a content cause look the same with this data.','What would help: first-3-second retention, saves and shares per 1K views, and posting time compared with your usual window. Open Growth, then Post Autopsy, to compare against your baseline.'],
+    body:[(()=>{ const rm=/(\d{1,3})\s*%/.exec(m); return (rm&&/\b(?:reach|views)\b/i.test(m)) ? 'You said reach is down '+rm[1]+'%'+(/\bnormal\b/i.test(m)?' and everything else is normal':'')+'. That does not point to one cause. A distribution cause and a content cause look the same with this data.' : 'You have not said which post this is or given its numbers, so I have nothing to compare against your median. A distribution cause and a content cause look the same without data.'; })(),'What would help: first-3-second retention, saves and shares per 1K views, and posting time compared with your usual window. Open Growth, then Post Autopsy, to compare against your baseline.'],
     conf:'Confidence: insufficient evidence',actions:[['OPEN POST AUTOPSY','autopsy']]};
   if(/follow(?:ers|er count)[^.?]*?(?:\bup\b|\bgrew\b|\bgrowth\b|\bincreased?\b|\brose\b|\+\s*\d+\s*%)[^.?]*?\b(?:deals?|rates?|income|offers?|pay|price)\b[^.?]*?(?:\bflat\b|\bsame\b|\bstuck\b|\bnot (?:grow|rise|increase|change|move)|\bno change\b|\bhaven'?t)/i.test(m)) return {kind:'growth',badge:'Correlation, not cause',title:'More followers does not by itself raise what brands pay.',
     body:['Followers rising while deals stay flat is consistent with several things: your audience is bigger but not more engaged, brands are weighing reach and saves instead of followers, or you have not asked for more yet. With this data I cannot tell which.',
@@ -755,9 +755,10 @@ function special(msg, opts){
       'Three tests you can run: (1) over your next three posts, track non-follower reach and saves per 1K views against your baseline; (2) ask your last two brands which numbers they looked at; (3) quote your next offer at the top of CreVa\'s range and see whether the brand moves.'],
     conf:'Confidence: Low. No pricing data was given.',actions:[['OPEN RATE GROWTH','rategrowth']]};
   if(/walk away|should i (?:take|walk|say no|accept)/i.test(m)){
-    const amt=parseAmount(m), floor=opts&&opts.minFee>0?opts.minFee:null; // floor = the creator's saved minimum fee for one Reel
+    const amt=parseAmount(m), floor=opts&&opts.minFee>0?opts.minFee:null, cmp=amt||(off&&off.ask)||null; // floor = the creator's saved minimum fee for one Reel
     return {kind:'walk',badge:'Trade-off, your call',title:'Walking away is one option. It is not the only one.',
       body:['You said '+(amt?INR(amt):'the brand')+' is final. A final price fixes the fee. It does not fix what the fee buys. Two real options:',
+        ...(off?[off.low==null?'The '+off.brand+' offer is product only, so there is no cash fee to compare '+(cmp?INR(cmp):'it')+' with. Asking for cash is the first step, and the counter draft does that.':'For the '+off.brand+' offer ('+off.deliv+'), CreVa\'s fair range for that package is '+INR(off.low)+' to '+INR(off.high)+'. '+(cmp?(cmp<off.low?INR(cmp)+' is '+INR(off.low-cmp)+' below the bottom of it.':INR(cmp)+' is inside or above that range.'):'')]:[]),
         'Option A, keep the fee and shrink the scope: organic-only usage for 30 days, no exclusivity, one revision, no raw footage, net-30. You then decide whether '+(amt?INR(amt):'that number')+' pays for that smaller job.',
         'Option B, walk away: you keep your calendar for offers closer to your closed deals'+(amt?' ('+INR(amt)+' is below the lowest of your three, ₹42,000)':'')+', and you lose this brand\'s money and relationship.',
         (floor?'Your saved minimum fee for one Reel is '+INR(floor)+'. '+(amt?(amt>=floor?INR(amt)+' is at or above it, so the fee clears your own floor and the real question is the scope.':INR(amt)+' is '+INR(floor-amt)+' below it, so by your own rule this offer does not clear your floor unless the scope shrinks.')+' ':'')+'What I do not know: the deliverables and whether you have other offers open. Those decide this more than the number does.':'What I do not know: the deliverables, your minimum acceptable fee, and whether you have other offers open. Those decide this more than the number does.')],
@@ -1066,10 +1067,31 @@ function answerCard(sp){
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${sp.kind==='refuse'||sp.kind==='flop'?'acc':'low'}">${esc(sp.badge)}</span><span class="muted small">${esc(sp.conf)}</span></div>
       <h3 style="font-size:21px;font-weight:700;text-wrap:balance">${esc(sp.title)}</h3>
       ${sp.body.map(b=>`<p>${esc(b)}</p>`).join('')}
-      ${sp.actions.length?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.actions.map(a=>`<button class="btn p" data-a="special-go" data-r="${a[1]}">${a[0]}</button>`).join('')}</div>`:''}
+      ${sp.actions.length?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.actions.map(a=>`<button class="btn p" data-a="special-go" data-r="${a[1]}" data-o="${a[2]||''}">${a[0]}</button>`).join('')}</div>`:''}
+      ${sp.choices?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.choices.map(c=>`<button class="btn" data-a="ask-pick" data-k="${c.k}" data-v="${esc(c.v)}">${esc(c.label)}</button>`).join('')}</div>`:''}
     </div></div>`;
 }
 const ASK_EXAMPLES=['Why did my Reel flop?','Write a caption for my GlowSkin serum post.','Accept and send it for me','The brand says ₹15,000 is final. Should I walk away?','My followers are up 25% but my deals are flat.'];
+const askOffers=()=>[['glow','GlowSkin'],['fin','FintechCo'],['well','WellnessCo']];
+function offerFacts(id){ const o=OFFERS[id]; if(!o) return null; const A=analyze(o.msg,o.con); return {id,brand:o.brand,low:A.low==null?null:A.low,high:A.high==null?null:A.high,ask:A.ask==null?null:A.ask,deliv:A.delivWords||'the package'}; }
+function flopFor(p){
+  const R=autopsyRule(p);
+  return {kind:'flop',badge:R.conf==='LOW'?'Low confidence':'Insufficient evidence',title:'About your '+p.date+' post: '+p.title,
+    body:[R.answer,'What the numbers show: '+R.observed.join('; ')+'.',...(R.hyp&&R.hyp.length?['A possibility, not a finding: '+R.hyp.join(' ')]:[]),'What would help: first-3-second retention, saves and shares per 1K views, and posting time compared with your usual window.'],
+    conf:'Confidence: '+R.conf.toLowerCase(),actions:[['OPEN POST AUTOPSY FOR THIS POST','autopsy']]};
+}
+function askAnswer(q){
+  const post=POSTS.find(x=>x.id===S.askPost)||null, off=S.askOffer?offerFacts(S.askOffer):null;
+  const sp=special(q,{minFee:Number(S.profile.minFee)>0?Number(S.profile.minFee):null,offer:off});
+  if(!sp) return {none:true};
+  if(sp.kind==='flop'&&!/\d\s*%/.test(q)){
+    if(post) return flopFor(post);
+    return {kind:'flop',badge:'One detail needed',title:'Which post do you mean?',body:['I cannot tell which Reel this is from the question, and without its numbers I don\'t have enough evidence to say why it underperformed. Pick the post and I will read its numbers against your median.'],conf:'Nothing guessed',actions:[],choices:POSTS.map(p=>({k:'post',v:p.id,label:p.date+' · '+p.title}))};
+  }
+  if(sp.kind==='walk'&&!off) return {kind:'walk',badge:'One detail needed',title:'Which offer is this about?',body:['A final price only means something next to the offer it belongs to: the deliverables, the usage and the fair range for that package. Pick the offer and I will compare the number with it.'],conf:'Nothing guessed',actions:[],choices:askOffers().map(o=>({k:'offer',v:o[0],label:o[1]}))};
+  if(sp.kind==='refuse'&&!off) return {...sp,body:[...sp.body,'You have not said which offer this is about. Pick one and CreVa will build a counter for it.'],actions:[],choices:askOffers().map(o=>({k:'offer',v:o[0],label:'Build a counter for '+o[1]}))};
+  return sp;
+}
 V.ask=()=>{
   const sp=S.askAns;
   let res='';
@@ -1079,8 +1101,10 @@ V.ask=()=>{
       <p>If this is a message or offer from a brand, analyse it instead, so CreVa can price it and read the terms.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn p" data-a="ask-offer">ANALYZE AS AN OFFER</button></div></div></div>`;
   else if(sp) res=answerCard(sp);
-  return pageHead('Ask CreVa','Questions about your posts, captions and decisions. For a brand\'s offer, use Rate Intelligence.')+
+  return pageHead('Ask CreVa','Questions about your posts, captions and decisions. Say which post or offer you mean, or CreVa will ask. For a brand\'s offer to price, use Rate Intelligence.')+
     `<div class="card pad stack"><div><label class="f" for="askq">Your question</label><textarea id="askq" rows="3" data-bind="askText" maxlength="500" placeholder="For example: Why did my Reel flop?">${esc(S.askText||'')}</textarea></div>
+      <div class="fgrid"><div><label class="f" for="ask_post">About which post? (optional)</label><select id="ask_post" data-a-change="askpost"><option value="">Not selected</option>${POSTS.map(p=>`<option value="${p.id}" ${S.askPost===p.id?'selected':''}>${p.date} · ${esc(p.title)}</option>`).join('')}</select></div>
+      <div><label class="f" for="ask_offer">About which offer? (optional)</label><select id="ask_offer" data-a-change="askoffer"><option value="">Not selected</option>${askOffers().map(o=>`<option value="${o[0]}" ${S.askOffer===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="ask-go">Ask CreVa ${ic('arrow',16)}</button>
       <span class="muted small">Answered by CreVa's built-in rules. No model call, and nothing is sent anywhere.</span></div>
       <div><div class="lab">Try one</div><div class="chips">${ASK_EXAMPLES.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="ask-chip" data-i="${i}">${esc(p)}</button>`).join('')}</div></div></div>${res}`;
@@ -1551,9 +1575,10 @@ document.addEventListener('click',async e=>{
   if(S.remOpen&&!e.target.closest('.rempanel')&&!e.target.closest('[data-a="reminders"]')){ S.remOpen=false; renderRem(); }
   const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
   if(a==='go'){ e.preventDefault(); const r=b.dataset.r; if(r==='rate'&&!S.msg&&S.cur!=='blank'&&!S.A) loadOffer('glow'); if(r==='contracts'){ S.cid=null; } if(r==='negotiate'&&S.mode==='rule'&&!S.A){ loadOffer('glow'); S.A=analyze(S.msg,S.con); } go(r); }
-  else if(a==='ask-go'||a==='ask-chip'){ if(a==='ask-chip') S.askText=ASK_EXAMPLES[+b.dataset.i]; const q=(S.askText||'').trim(); if(!q){ toast('Type a question first.'); return; } S.askAns=special(q,{minFee:Number(S.profile.minFee)>0?Number(S.profile.minFee):null})||{none:true}; render(false); }
+  else if(a==='ask-go'||a==='ask-chip'){ if(a==='ask-chip') S.askText=ASK_EXAMPLES[+b.dataset.i]; const q=(S.askText||'').trim(); if(!q){ toast('Type a question first.'); return; } S.askAns=askAnswer(q); render(false); }
+  else if(a==='ask-pick'){ if(b.dataset.k==='post') S.askPost=b.dataset.v; else S.askOffer=b.dataset.v; if((S.askText||'').trim()) S.askAns=askAnswer(S.askText); render(false); }
   else if(a==='ask-offer'){ S.msg=S.askText||''; S.cur='blank'; S.A=null; S.special=null; S.mode=''; go('rate'); }
-  else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else if(r==='rategrowth'){ S.tab='rate'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
+  else if(a==='special-go'){ const r=b.dataset.r; if(b.dataset.o){ quickAnalysis(b.dataset.o); go(r); return; } if(r==='autopsy'){ if(S.route==='ask'&&S.askPost) S.post=S.askPost; S.tab='autopsy'; go('growth'); } else if(r==='rategrowth'){ S.tab='rate'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
   else if(a==='menu'){ $('#side').classList.toggle('open'); $('#scrim').classList.toggle('open'); }
   else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); saveUi(); }
   else if(a==='sc-toggle'){ const s=S.profile.social[+b.dataset.i]; if(!s.active){ openLink(+b.dataset.i); } else { s.active=false; s.conn=false; S.dirty=true; render(false); } }
@@ -1659,6 +1684,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.aChange==='post'){ S.post=t.value; render(false); }
+  if(t.dataset.aChange==='askpost'||t.dataset.aChange==='askoffer'){ if(t.dataset.aChange==='askpost') S.askPost=t.value; else S.askOffer=t.value; if(S.askAns&&(S.askText||'').trim()) S.askAns=askAnswer(S.askText); render(false); }
   if(t.dataset.ck==='platform'){ S.chk.deliver=t.value==='LinkedIn'?'li1':'reel'; render(false); }
   if(t.id==='av_up'&&t.files&&t.files[0]){ const f=t.files[0]; if(f.size>12e6){ toast('Choose a photo under 12 MB.'); return; } downscalePhoto(f,url=>{ if(!url){ toast('Could not read that image.'); return; } S.profile.avatar.photo=url; S.dirty=true; refreshAvatar(); saveProfile(false).then(ok=>{ const si=document.getElementById('saveinfo'); if(si) si.textContent=ok?'All changes saved.':'You have unsaved changes.'; toast(S.db==='online'?(ok?'Photo saved':'Could not save the photo yet. It will retry.'):'Photo kept on this page only (database offline)'); }); }); return; }
   if(t.id==='upl'&&t.files&&t.files[0]){
