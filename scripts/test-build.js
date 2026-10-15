@@ -93,5 +93,13 @@ ok('after a reload the photo, seed and plan come back', app.run('S.profile.avata
 app.run('refreshAvatar()');
 ok('the restored photo is what the avatar shows', /<img[^>]+src="data:image\/jpeg/.test(app.window.document.querySelector('.topbar .av').innerHTML));
 
+// ---- a blank brand name (Custom / Other) must not break the analysis, the draft or the contract list ----
+app.run("S.brandName=''; S.site=''; S.msg='Brand offered ₹18,000 for one Reel. Contract says they can use it in paid ads forever, worldwide.'; S.con=''; S.A=analyze(S.msg,S.con); S.mode='fallback'");
+ok('blank brand name gives a label instead of crashing', app.run('brandOf()') === 'Unnamed brand');
+t = show("S.route='rate'");
+ok('Deal Intelligence renders for a custom offer with no brand name', /KEY RISKS|Key risks/i.test(t) && /perpetual/i.test(t));
+t = show("S.route='negotiate'; setDraft()");
+ok('a counter draft can be built with no brand name', app.run('S.draft').length > 40);
+
 app.close();
 process.exit(failed ? 1 : 0);
