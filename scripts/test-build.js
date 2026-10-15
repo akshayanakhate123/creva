@@ -101,5 +101,28 @@ ok('Deal Intelligence renders for a custom offer with no brand name', /KEY RISKS
 t = show("S.route='negotiate'; setDraft()");
 ok('a counter draft can be built with no brand name', app.run('S.draft').length > 40);
 
+// ---- Ask CreVa: questions that are not offers have their own screen ----
+t = show("S.route='ask'; S.askAns=null; S.askText=''");
+ok('Ask CreVa is in the menu and shows a question box and examples', /Ask CreVa/.test(app.text()) && !!app.window.document.getElementById('askq') && /Try one/.test(t));
+const ask = async (q) => { app.run('S.askText=' + JSON.stringify(q)); await click('[data-a="ask-go"]'); return app.text(); };
+t = await ask('Why did my Reel flop?');
+ok('flop question: insufficient evidence, no invented cause', /enough evidence/.test(t) && /Built-in|CreVa's answer/i.test(t));
+t = await ask('Write a caption for my GlowSkin serum post.');
+ok('caption request: draft with the disclosure label', /Paid partnership with GlowSkin/.test(t) && !/cures|clinically|guarantee/i.test(t));
+t = await ask('Accept and send it for me');
+ok('accept and send: declined', /will not accept, sign or send/i.test(t));
+t = await ask('The brand says ₹15,000 is final. Should I walk away?');
+ok('walk-away: trade-off, no verdict', /Walking away is one option/.test(t) && !/you should walk away/i.test(t));
+t = await ask('My followers are up 25% but deals are flat');
+ok('followers up, deals flat: correlation not cause', /correlation/i.test(t));
+t = await ask('Brand offered ₹30,000 for one Reel');
+ok('something that is an offer is pointed to Rate Intelligence', /Not answered here/.test(t) && /ANALYZE AS AN OFFER/.test(t));
+await click('[data-a="ask-offer"]');
+ok('Analyze as an offer carries the text to Rate Intelligence', app.run('S.route') === 'rate' && app.run('S.msg') === 'Brand offered ₹30,000 for one Reel');
+app.run("S.profile.plan='Free'");
+t = await (async () => { show("S.route='ask'; S.askAns=null"); return ask('Why did my Reel flop?'); })();
+ok('Ask CreVa stays available on the Free plan', /enough evidence/.test(t) && !/part of the Pro plan/.test(t));
+app.run("S.profile.plan='Pro'");
+
 app.close();
 process.exit(failed ? 1 : 0);

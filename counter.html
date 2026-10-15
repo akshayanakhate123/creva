@@ -928,8 +928,8 @@ function modeLabel(){
 function confBadge(c){ const cl={High:'ok',Medium:'acc',Low:'med'}[c]||'low'; return `<span class="sev ${cl}">${c}</span>`; }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.add('hide'),3200); }
 function pageHead(t,sub,right){ return `<div class="ph"><div><div class="eyebrow">${esc(NAMES[S.route]||'')}</div><h1>${t}</h1>${sub?`<p>${sub}</p>`:''}</div>${right||''}</div>`; }
-const NAMES={home:'Home',growth:'Growth',opps:'Opportunities',deals:'Deals',rate:'Rate Intelligence',breakdown:'Rate Intelligence',negotiate:'Rate Intelligence',contracts:'Contracts',payments:'Payments',checker:'Public rate checker',profile:'Profile',ratecard:'Rate Card'};
-const NAV=[['home','Home'],['growth','Growth'],['opps','Opportunities'],['deals','Deals'],['rate','Rate Intelligence'],['ratecard','Rate Card'],['contracts','Contracts'],['payments','Payments']];
+const NAMES={home:'Home',ask:'Ask CreVa',growth:'Growth',opps:'Opportunities',deals:'Deals',rate:'Rate Intelligence',breakdown:'Rate Intelligence',negotiate:'Rate Intelligence',contracts:'Contracts',payments:'Payments',checker:'Public rate checker',profile:'Profile',ratecard:'Rate Card'};
+const NAV=[['home','Home'],['ask','Ask CreVa'],['growth','Growth'],['opps','Opportunities'],['deals','Deals'],['rate','Rate Intelligence'],['ratecard','Rate Card'],['contracts','Contracts'],['payments','Payments']];
 const NAVMAP={breakdown:'rate',negotiate:'rate'};
 
 /* ============ views ============ */
@@ -1061,6 +1061,31 @@ const TERMIC={Deliverables:'doc','Usage scope':'globe','Paid media':'mega',Exclu
 function termChips(A){ return `<div class="chips">${A.terms.map(c=>`<div class="chip ${c.f||''}"><span class="ib">${ic(TERMIC[c.k]||'doc',18)}</span><div><small>${c.k}</small><b>${esc(c.v)}</b></div></div>`).join('')}</div>`; }
 function skel(n){ return Array.from({length:n},(_,i)=>`<div class="skel" style="width:${90-i*12}%;margin:10px 0"></div>`).join(''); }
 
+function answerCard(sp){
+  return `<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${sp.kind==='refuse'||sp.kind==='flop'?'acc':'low'}">${esc(sp.badge)}</span><span class="muted small">${esc(sp.conf)}</span></div>
+      <h3 style="font-size:21px;font-weight:700;text-wrap:balance">${esc(sp.title)}</h3>
+      ${sp.body.map(b=>`<p>${esc(b)}</p>`).join('')}
+      ${sp.actions.length?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.actions.map(a=>`<button class="btn p" data-a="special-go" data-r="${a[1]}">${a[0]}</button>`).join('')}</div>`:''}
+    </div></div>`;
+}
+const ASK_EXAMPLES=['Why did my Reel flop?','Write a caption for my GlowSkin serum post.','Accept and send it for me','The brand says ₹15,000 is final. Should I walk away?','My followers are up 25% but my deals are flat.'];
+V.ask=()=>{
+  const sp=S.askAns;
+  let res='';
+  if(sp&&sp.none) res=`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack"><div><span class="sev low">Not answered here</span></div>
+      <h3 style="font-size:21px;font-weight:700;text-wrap:balance">This does not look like a question CreVa answers on this screen.</h3>
+      <p>Ask CreVa handles: why a post underperformed, a caption draft, whether to walk away from a final price, followers versus rates, and requests to accept, sign or send (which it declines).</p>
+      <p>If this is a message or offer from a brand, analyse it instead, so CreVa can price it and read the terms.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn p" data-a="ask-offer">ANALYZE AS AN OFFER</button></div></div></div>`;
+  else if(sp) res=answerCard(sp);
+  return pageHead('Ask CreVa','Questions about your posts, captions and decisions. For a brand\'s offer, use Rate Intelligence.')+
+    `<div class="card pad stack"><div><label class="f" for="askq">Your question</label><textarea id="askq" rows="3" data-bind="askText" maxlength="500" placeholder="For example: Why did my Reel flop?">${esc(S.askText||'')}</textarea></div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="ask-go">Ask CreVa ${ic('arrow',16)}</button>
+      <span class="muted small">Answered by CreVa's built-in rules. No model call, and nothing is sent anywhere.</span></div>
+      <div><div class="lab">Try one</div><div class="chips">${ASK_EXAMPLES.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="ask-chip" data-i="${i}">${esc(p)}</button>`).join('')}</div></div></div>${res}`;
+};
+
 V.rate=()=>{
   const A=S.A, sp=S.special;
   const pills=[['glow','GlowSkin'],['fin','FintechCo'],['well','WellnessCo'],['blank','Custom / Other']].map(p=>`<button class="pillb" data-a="load" data-id="${p[0]}" aria-pressed="${S.cur===p[0]}">${p[1]}</button>`).join('');
@@ -1068,7 +1093,7 @@ V.rate=()=>{
       <div><div class="lab">1. Select a brand</div><div style="display:flex;flex-wrap:wrap;gap:10px">${pills}</div>
         <div class="fgrid" style="margin-top:14px"><div><label class="f" for="bn">Brand name</label><input type="text" id="bn" data-bind="brandName" value="${esc(S.brandName)}" placeholder="For example, GlowSkin"></div>
         <div><label class="f" for="bs">Brand website</label><input type="text" id="bs" data-bind="site" data-nomic="1" inputmode="url" value="${esc(S.site)}" placeholder="https://brand.com"><div class="err" id="err_site"></div></div></div></div>
-      <div><label class="f" for="msg">2. Paste the brand's message</label><textarea id="msg" rows="6" data-bind="msg" maxlength="2000">${esc(S.msg)}</textarea><div class="cnt" id="mc">${S.msg.length}/2000</div></div>
+      <div><label class="f" for="msg">2. Paste the brand's message</label><textarea id="msg" rows="6" data-bind="msg" maxlength="2000">${esc(S.msg)}</textarea><div class="cnt" id="mc">${S.msg.length}/2000</div><p class="muted small" style="margin-top:6px">Questions such as "Why did my Reel flop?" or a caption request go to <a href="#" data-a="go" data-r="ask" style="color:var(--accent)">Ask CreVa</a>.</p></div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center"><button class="btn p" data-a="analyze" ${S.busy?'disabled':''}>${S.busy?'Analysing with the live model...':'Analyze This Offer'} ${ic('arrow',16)}</button>${S.busy?`<button class="btn" data-a="stop">Stop</button>`:''}
         <details><summary>Final-check prompts</summary><div class="chips" style="margin-top:10px">${EVAL_PROMPTS.map((p,i)=>`<button class="btn sm" style="font-weight:500;text-align:left" data-a="evalp" data-i="${i}">${esc(p)}</button>`).join('')}</div></details></div>
       ${S.mode?`<div class="status" style="margin-top:0">${modeLabel()}</div>`:''}
@@ -1083,12 +1108,7 @@ V.rate=()=>{
   if(S.limitHit){
     res=`<div class="sec"><div class="card pad stack" style="border-color:var(--accent)"><span class="ib">${ic('lock',22)}</span><h3 style="font-size:20px;font-weight:700">You have used the 2 analyses included in the Free plan this month.</h3><p class="muted">The rate checker stays free. Pro adds unlimited analysis, contract review, negotiation, the deal tracker and Post Autopsy.</p><p class="note acc">${ic('alert',18)}<span><b>Prototype.</b> No payment is taken. Switching plan only changes what you can use here.</span></p><div><button class="btn p" data-a="plan-set" data-p="Pro">Switch to Pro (demo)</button></div></div></div>`;
   } else if(sp){
-    res=`<div class="sec"><h2>CreVa's answer</h2><div class="card pad stack">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="sev ${sp.kind==='refuse'||sp.kind==='flop'?'acc':'low'}">${esc(sp.badge)}</span><span class="muted small">${esc(sp.conf)}</span></div>
-      <h3 style="font-size:21px;font-weight:700;text-wrap:balance">${esc(sp.title)}</h3>
-      ${sp.body.map(b=>`<p>${esc(b)}</p>`).join('')}
-      ${sp.actions.length?`<div style="display:flex;gap:10px;flex-wrap:wrap">${sp.actions.map(a=>`<button class="btn p" data-a="special-go" data-r="${a[1]}">${a[0]}</button>`).join('')}</div>`:''}
-    </div></div>`;
+    res=answerCard(sp);
   } else if(A){
     const pend=S.busy;
     const rangeCell=A.rangeUnavailable?`<div class="mid" style="font-size:18px">Cannot range yet</div><div class="muted small" style="margin-top:6px">${esc(A.rangeUnavailable)}</div>`
@@ -1466,7 +1486,7 @@ V.checker=()=>{
 
 /* ============ shell and render ============ */
 function renderNav(){
-  const act=NAVMAP[S.route]||S.route, icn={home:'home',growth:'growth',opps:'opp',deals:'deals',rate:'rate',ratecard:'tag',contracts:'contract',payments:'pay'};
+  const act=NAVMAP[S.route]||S.route, icn={home:'home',ask:'chat',growth:'growth',opps:'opp',deals:'deals',rate:'rate',ratecard:'tag',contracts:'contract',payments:'pay'};
   $('#side').innerHTML=`<div class="brand">${LOGO}<div><b>CreVa</b><span>Deal intelligence</span></div></div>`+
     NAV.map(n=>`<button class="nav ${spotNav()===n[0]?'spot':''}" data-a="go" data-r="${n[0]}" ${act===n[0]?'aria-current="page"':''}>${ic(icn[n[0]],22)}<span>${n[1]}</span>${act===n[0]?`<span class="go">${ic('chev',16)}</span>`:''}</button>`).join('')+
     `<div class="sp"></div><button class="promo ${spotNav()==='promo'?'spot':''}" data-a="checker"><b>${ic('crown',22)}<span>Public rate checker</span><span class="go">${ic('chev',16)}</span></b><small>Know what you're worth. Know what you're signing. Grow what brands pay for.</small></button>`;
@@ -1531,6 +1551,8 @@ document.addEventListener('click',async e=>{
   if(S.remOpen&&!e.target.closest('.rempanel')&&!e.target.closest('[data-a="reminders"]')){ S.remOpen=false; renderRem(); }
   const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a;
   if(a==='go'){ e.preventDefault(); const r=b.dataset.r; if(r==='rate'&&!S.msg&&S.cur!=='blank'&&!S.A) loadOffer('glow'); if(r==='contracts'){ S.cid=null; } if(r==='negotiate'&&S.mode==='rule'&&!S.A){ loadOffer('glow'); S.A=analyze(S.msg,S.con); } go(r); }
+  else if(a==='ask-go'||a==='ask-chip'){ if(a==='ask-chip') S.askText=ASK_EXAMPLES[+b.dataset.i]; const q=(S.askText||'').trim(); if(!q){ toast('Type a question first.'); return; } S.askAns=special(q,{minFee:Number(S.profile.minFee)>0?Number(S.profile.minFee):null})||{none:true}; render(false); }
+  else if(a==='ask-offer'){ S.msg=S.askText||''; S.cur='blank'; S.A=null; S.special=null; S.mode=''; go('rate'); }
   else if(a==='special-go'){ const r=b.dataset.r; if(r==='autopsy'){ S.tab='autopsy'; go('growth'); } else if(r==='rategrowth'){ S.tab='rate'; go('growth'); } else { if(!S.A||!S.A.counter||!S.A.counter.max){ loadOffer('glow'); S.A=analyze(S.msg,S.con); S.mode=''; } go(r); } }
   else if(a==='menu'){ $('#side').classList.toggle('open'); $('#scrim').classList.toggle('open'); }
   else if(a==='theme'){ S.theme={dark:'light',light:'system',system:'dark'}[S.theme]; applyTheme(); saveUi(); }

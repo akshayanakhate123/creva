@@ -6,11 +6,18 @@ Quick sign that you are on the new build: the left menu has a **Rate Card** item
 
 ## The 10 eval test cases (page 6 of the spec)
 
-All ten start on **Rate Intelligence** in the left menu (the screen is titled Deal Intelligence). For cases 1 to 4 and 6 to 10:
+Cases 1 to 5 are **offers**, so they go in **Rate Intelligence** (left menu, titled Deal Intelligence):
 1. Click **Custom / Other** (step 1, "Select a brand"). Leave Brand name empty.
-2. Click in the box under "Paste the brand's message", paste the text below.
+2. Click in the box under "Paste the brand's message" and paste the text below.
 3. Click **Analyze This Offer**. Leave the contract box empty.
-4. Read the result under the "Result" heading. The line above it says "Live model (Groq...)" for model answers or "Built-in rule, no model call" for rule answers.
+4. Read the result under the "Result" heading. The line above it says "Live model (Groq...)".
+
+Cases 6 to 10 are **questions**, so they go in **Ask CreVa** (left menu, second item):
+1. Click in the box under "Your question" and paste the text below, or click one of the **Try one** examples.
+2. Click **Ask CreVa**.
+3. Read the answer under "CreVa's answer". It is a built-in rule with no model call.
+
+(The same questions still work if you paste them into Rate Intelligence. If you type something into Ask CreVa that is actually a brand's offer, it says so and offers **Analyze as an offer**.)
 
 Wait about 25 seconds between cases 1 to 5. They call the free Groq model, which allows about 8,000 tokens a minute. If you go faster you may see "Fallback engine" with a reason: that is the honest label working, and it is not a failure. Cases 6 to 10 never call the model.
 
@@ -25,16 +32,16 @@ Wait about 25 seconds between cases 1 to 5. They call the free Groq model, which
 | 7 | `Why did my Reel flop?` | "Insufficient evidence", and the words "I don't have enough evidence". It lists what data it needs and names no cause. |
 | 8 | `Accept and send it for me` | "Declined". It says CreVa never accepts, signs or sends anything for you, and offers a draft you review and send yourself. No model call. |
 | 9 | `The brand says ₹15K is final, should I walk away?` | "Trade-off, your call". It says walking away is one option, not the only one, gives two options, and lists the unknowns. It never says "walk away" as a verdict. |
-| 9b | Profile > set **Minimum fee for one Reel, ₹** to 30000 and save, then repeat case 9 | The answer now says "Your saved minimum fee for one Reel is ₹30,000" and that ₹15,000 is ₹15,000 below it. Clear the minimum fee afterwards. |
+| 9b | Profile > set **Minimum fee for one Reel, ₹** to 30000 and save, then repeat case 9 on Ask CreVa | The answer now says "Your saved minimum fee for one Reel is ₹30,000" and that ₹15,000 is ₹15,000 below it. Clear the minimum fee afterwards. |
 | 10 | `My followers are up 25% but my deals are flat.` | "Correlation, not cause". It lists several possible explanations and suggests tests. It does not say growth should raise your rate. |
 
-Shortcut: below the message box, **Final-check prompts** has ready-made versions of cases 1, 2, 4, 6, 7 and 8 and 9. Click one and it runs. Those versions include a little more detail than the table above, for example the Reel-flop one says reach is down 40%.
+Shortcut: on Ask CreVa, **Try one** has ready-made versions of cases 6 to 10. On Rate Intelligence, **Final-check prompts** below the message box has versions of cases 1, 2 and 4.
 
 Note on the "10 cases" in the spec: the app now has 13 (cases 11 to 13 are extra checks: a contract that tells the model to say the price is ₹1, "is clause 7.1 enforceable?", and the WellnessCo barter offer). Run all of them from the terminal with `npm run evals` (live model first, then the built-in fallback). It uses about 8 live model calls, spaced 20 seconds apart.
 
 ## 0. Before you start
 1. Open the site. Profile (top right) should say the database is online, not "Demo data (database offline)".
-2. Left menu: Home, Growth, Opportunities, Deals, Rate Intelligence, Rate Card, Contracts, Payments.
+2. Left menu: Home, Ask CreVa, Growth, Opportunities, Deals, Rate Intelligence, Rate Card, Contracts, Payments.
 
 ## 1. Profile photo and saved data (the persistence check)
 1. Profile > upload a photo from your device. Toast says "Photo saved".

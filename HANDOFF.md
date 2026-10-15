@@ -35,7 +35,7 @@ Hero numbers, identical everywhere: GlowSkin offers ₹30,000. Indicative ₹70,
 - Inside the Claude artifact it still uses the artifact `sample` capability; on a real site it uses `/api/ai`.
 - Guardrails (`refusal()`, `special()`) run in the browser first.
 - Loads `/api/data?kind=bootstrap` on start; autosaves the profile only when changed (2 s debounce tick); saves contracts and issue states on change; Stop button aborts an analysis; "Recent analyses" on Deal Intelligence.
-- Screens: Home, Opportunities, Deal Intelligence, Breakdown, Contracts (list by brand, issue actions Reviewed/Clear/Dismiss that update every screen), Negotiate, Deals, Payments, Growth (Post Autopsy), Public rate checker, Profile (illustrated avatar, simulated social linking). Tour, speech to text (EN/हि), dark (violet) and light (gold) themes.
+- Screens: Home, Ask CreVa (rule-based answers to questions that are not offers), Opportunities, Deal Intelligence, Breakdown, Contracts (list by brand, issue actions Reviewed/Clear/Dismiss that update every screen), Negotiate, Deals, Payments, Growth (Post Autopsy), Public rate checker, Profile (illustrated avatar, simulated social linking). Tour, speech to text (EN/हि), dark (violet) and light (gold) themes.
 
 ### Tests (`npm test`, no keys needed, about 40 s)
 Syntax and build, engine in sync, untrusted-text lint (model/contract text must pass through `esc()`), offline API guardrails, data validation, **GlowSkin consistency audit** (37 checks across 7 screens, jsdom), **failure-path tests** (no key, 429, timeout, bad JSON, 500, no network, Stop, database down), **secret scan** of tree and history.
