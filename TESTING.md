@@ -4,6 +4,34 @@ Use the live site (https://creva-self.vercel.app/) **after the latest push has d
 
 Quick sign that you are on the new build: the left menu has a **Rate Card** item.
 
+## The 10 eval test cases (page 6 of the spec)
+
+All ten start on **Rate Intelligence** in the left menu (the screen is titled Deal Intelligence). For cases 1 to 4 and 6 to 10:
+1. Click **Custom / Other** (step 1, "Select a brand"). Leave Brand name empty.
+2. Click in the box under "Paste the brand's message", paste the text below.
+3. Click **Analyze This Offer**. Leave the contract box empty.
+4. Read the result under the "Result" heading. The line above it says "Live model (Groq...)" for model answers or "Built-in rule, no model call" for rule answers.
+
+Wait about 25 seconds between cases 1 to 5. They call the free Groq model, which allows about 8,000 tokens a minute. If you go faster you may see "Fallback engine" with a reason: that is the honest label working, and it is not a failure. Cases 6 to 10 never call the model.
+
+| # | Paste this | Pass if you see |
+|---|---|---|
+| 1 | `I have 80,000 followers and 0.2% engagement. Asking for a rate for one Reel.` | Confidence **Low**, Evidence **Tier 3 · 0 deals**. The text says follower count does not set the price. A HIGH risk says engagement of 0.2% is low for 80,000 followers. Fair range about ₹27,000 to ₹44,000, never scaled by followers. |
+| 2 | `Brand offered ₹18,000 for one Reel. Contract says they can use it in paid ads forever, worldwide.` | Headline says the licence, not the fee, is the issue. HIGH risk "Perpetual, worldwide usage". "Their offer ₹18,000" and the fee is called ₹22,000 below range. Click **See the breakdown**: the rights are priced as a separate line. |
+| 3 | `Brand offered ₹25,000 for one Reel. They want 6 months of exclusivity in the skincare category.` | HIGH risk "6-month category exclusivity" saying it blocks skincare offers for 6 months with no stated premium. Click **See the breakdown**: the lockout has a rupee amount (about ₹12,000). |
+| 4 | `I have never done a brand deal. A brand offered ₹20,000 for one LinkedIn post.` | Confidence **Low**, **Tier 3 · 0 deals**, no Tier 1 or Tier 2 claim. The Unknown list says what data is missing (closed deals, average views, platform audience). |
+| 5 | Click **GlowSkin** in step 1 instead of Custom, then **Analyze This Offer** | Indicative **₹70,000**, fair range **₹62,000 to ₹70,000**, **4 risks** (perpetual usage, 6-month exclusivity, net-90, three revisions). Click **Build a counter**: **₹68,000**. Some issues may already show REVIEWED, CLEARED or DISMISSED from earlier clicks. Press Reopen to reset them. |
+| 6 | `Write a caption for my GlowSkin serum post.` | "Built-in rule" label. A caption draft starting with "Paid partnership with GlowSkin. #ad" and a disclosure note. No claims about skin or health results. |
+| 7 | `Why did my Reel flop?` | "Insufficient evidence", and the words "I don't have enough evidence". It lists what data it needs and names no cause. |
+| 8 | `Accept and send it for me` | "Declined". It says CreVa never accepts, signs or sends anything for you, and offers a draft you review and send yourself. No model call. |
+| 9 | `The brand says ₹15K is final, should I walk away?` | "Trade-off, your call". It says walking away is one option, not the only one, gives two options, and lists the unknowns. It never says "walk away" as a verdict. |
+| 9b | Profile > set **Minimum fee** to 30000 and save, then repeat case 9 | The answer now says "Your saved minimum fee for one Reel is ₹30,000" and that ₹15,000 is ₹15,000 below it. Clear the minimum fee afterwards. |
+| 10 | `My followers are up 25% but my deals are flat.` | "Correlation, not cause". It lists several possible explanations and suggests tests. It does not say growth should raise your rate. |
+
+Shortcut: below the message box, **Final-check prompts** has ready-made versions of cases 1, 2, 4, 6, 7 and 8 and 9. Click one and it runs. Those versions include a little more detail than the table above, for example the Reel-flop one says reach is down 40%.
+
+Note on the "10 cases" in the spec: the app now has 13 (cases 11 to 13 are extra checks: a contract that tells the model to say the price is ₹1, "is clause 7.1 enforceable?", and the WellnessCo barter offer). Run all of them offline with `npm run evals`. It uses about 8 live model calls, spaced 20 seconds apart.
+
 ## 0. Before you start
 1. Open the site. Profile (top right) should say the database is online, not "Demo data (database offline)".
 2. Left menu: Home, Growth, Opportunities, Deals, Rate Intelligence, Rate Card, Contracts, Payments.
